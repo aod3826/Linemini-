@@ -7,8 +7,8 @@
 // Replace these with your actual values
 const APP_CONFIG = {
   LIFF_ID: 'YOUR_LIFF_ID',                // From LINE Developers Console
-  GAS_BASE_URL: 'https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec',
-  ADMIN_KEY: 'YOUR_SECURE_ADMIN_KEY',      // Change to a random string
+  GAS_BASE_URL: 'https://script.google.com/macros/s/AKfycbzuhLRc44K-ZREA5NZ4M_se_j_vDS4YgM8SFojvTsOAA7BaMLGds120QZym126jgkcX/exec',
+  ADMIN_KEY:    'aod',      // Change to a random string
   LINE_PAY_ENV: 'sandbox',                 // 'sandbox' or 'production'
 };
 
