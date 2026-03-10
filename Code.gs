@@ -7,8 +7,8 @@
 
 // ===== CONFIGURATION =====
 const CONFIG = {
-  SHEET_ID: 'YOUR_GOOGLE_SHEET_ID',        // Replace with your Sheet ID
-  ADMIN_KEY: 'YOUR_SECURE_ADMIN_KEY',       // Match with frontend APP_CONFIG.ADMIN_KEY
+  SHEET_ID: '1WcHuHSn7yYHx8gvgYp7lJ2sSCKeF8yfyJ98zWCL-2iw',        // Replace with your Sheet ID
+  ADMIN_KEY: 'aod',       // Match with frontend APP_CONFIG.ADMIN_KEY
   LINE_CHANNEL_ACCESS_TOKEN: 'YOUR_LINE_CHANNEL_ACCESS_TOKEN',
   LINE_OWNER_USER_ID: 'YOUR_LINE_USER_ID',  // Your LINE User ID (for notifications)
   LINE_PAY_CHANNEL_ID: 'YOUR_LINE_PAY_CHANNEL_ID',
