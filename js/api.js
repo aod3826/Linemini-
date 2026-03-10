@@ -1,13 +1,13 @@
 /**
  * api.js - Frontend API Client for Restaurant LINE Mini App
  * Handles all communication with Google Apps Script backend
+ * FIXED: Added redirect:'follow' and fixed headers for GAS compatibility
  */
 
 const API = (() => {
 
   // ===== CONFIGURATION =====
   const CONFIG = {
-    // Replace with your deployed Google Apps Script Web App URL
     BASE_URL: 'https://script.google.com/macros/s/AKfycbzuhLRc44K-ZREA5NZ4M_se_j_vDS4YgM8SFojvTsOAA7BaMLGds120QZym126jgkcX/exec',
     CACHE_TTL: 5 * 60 * 1000, // 5 minutes
   };
@@ -42,14 +42,16 @@ const API = (() => {
     const url = new URL(CONFIG.BASE_URL);
     Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
 
+    const isPost = !!options.body;
+
+    // ✅ FIX: GAS ต้องการ redirect:'follow' และ GET ไม่ควรส่ง Content-Type
     const fetchOptions = {
-      method: options.method || 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      method: isPost ? 'POST' : 'GET',
+      redirect: 'follow', // ✅ สำคัญมาก — GAS redirect ก่อนตอบ
     };
 
-    if (options.body) {
-      fetchOptions.method = 'POST';
-      // GAS requires params in URL for POST too
+    if (isPost) {
+      fetchOptions.headers = { 'Content-Type': 'text/plain' }; // ✅ ใช้ text/plain แทน application/json เพื่อหลีกเลี่ยง CORS preflight
       fetchOptions.body = JSON.stringify(options.body);
     }
 
@@ -67,10 +69,6 @@ const API = (() => {
 
   // ===== PUBLIC API METHODS =====
 
-  /**
-   * Get all active menu items
-   * Uses cache to reduce API calls
-   */
   async function getMenu(forceRefresh = false) {
     const cacheKey = 'menu';
     if (!forceRefresh) {
@@ -82,40 +80,23 @@ const API = (() => {
     return data;
   }
 
-  /**
-   * Create a new order
-   * @param {Object} orderData - { userId, customerName, items: [{menuId, qty}] }
-   */
   async function createOrder(orderData) {
     const data = await request(
       { action: 'createOrder' },
       { body: orderData }
     );
-    cache.clear('menu'); // invalidate menu cache
+    cache.clear('menu');
     return data;
   }
 
-  /**
-   * Get order by ID
-   * @param {string} orderId
-   */
   async function getOrder(orderId) {
     return request({ action: 'getOrder', orderId });
   }
 
-  /**
-   * Create LINE Pay payment request
-   * @param {string} orderId
-   */
   async function createPayment(orderId) {
     return request({ action: 'createPayment', orderId });
   }
 
-  /**
-   * Update payment status (called by webhook or manually)
-   * @param {string} orderId
-   * @param {string} transactionId
-   */
   async function updatePaymentStatus(orderId, transactionId) {
     return request(
       { action: 'updatePaymentStatus' },
@@ -123,23 +104,10 @@ const API = (() => {
     );
   }
 
-  // ===== ADMIN API METHODS =====
-
-  /**
-   * Get all orders for admin
-   * @param {string} adminKey - Admin authentication key
-   * @param {string} date - Optional date filter (YYYY-MM-DD)
-   */
   async function getOrders(adminKey, date = '') {
     return request({ action: 'getOrders', adminKey, date });
   }
 
-  /**
-   * Update order status
-   * @param {string} adminKey
-   * @param {string} orderId
-   * @param {string} status - pending | paid | cooking | done
-   */
   async function updateOrderStatus(adminKey, orderId, status) {
     return request(
       { action: 'updateOrderStatus', adminKey },
@@ -147,12 +115,6 @@ const API = (() => {
     );
   }
 
-  /**
-   * Update menu item status
-   * @param {string} adminKey
-   * @param {string} menuId
-   * @param {string} status - active | inactive
-   */
   async function updateMenuStatus(adminKey, menuId, status) {
     cache.clear('menu');
     return request(
@@ -161,10 +123,6 @@ const API = (() => {
     );
   }
 
-  /**
-   * Get sales report for today
-   * @param {string} adminKey
-   */
   async function getSalesReport(adminKey) {
     return request({ action: 'getSalesReport', adminKey });
   }
