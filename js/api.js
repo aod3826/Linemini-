@@ -8,7 +8,7 @@ const API = (() => {
   // ===== CONFIGURATION =====
   const CONFIG = {
     // Replace with your deployed Google Apps Script Web App URL
-    BASE_URL: 'https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec',
+    BASE_URL: 'https://script.google.com/macros/s/AKfycbzuhLRc44K-ZREA5NZ4M_se_j_vDS4YgM8SFojvTsOAA7BaMLGds120QZym126jgkcX/exec',
     CACHE_TTL: 5 * 60 * 1000, // 5 minutes
   };
 
