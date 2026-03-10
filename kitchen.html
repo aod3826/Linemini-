@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>จอครัว - Kitchen Display</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    body { background: #0F1117; max-width: 100%; }
+    .kitchen-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px; padding: 16px;
+    }
+    .time-ago { font-size: 12px; color: rgba(255,255,255,0.4); }
+
+    /* Login overlay */
+    #kitchen-login {
+      position: fixed; inset: 0;
+      background: #0F1117;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px;
+      z-index: 999; padding: 32px;
+    }
+    .kitchen-login-input {
+      width: 100%; max-width: 300px; padding: 12px 16px;
+      border: 1.5px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px; font-family: var(--font-main);
+      font-size: 16px; color: white; outline: none;
+    }
+    .kitchen-login-input:focus { border-color: var(--color-primary); }
+    .btn-kitchen-login {
+      width: 100%; max-width: 300px; padding: 14px;
+      background: var(--color-primary); color: white;
+      border: none; border-radius: 12px; font-family: var(--font-main);
+      font-size: 16px; font-weight: 700; cursor: pointer;
+    }
+
+    /* Status filter */
+    .kitchen-filter {
+      display: flex; gap: 8px;
+      padding: 12px 16px;
+      background: rgba(255,255,255,0.05);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .kfilter-btn {
+      padding: 6px 16px; border-radius: 999px;
+      font-family: var(--font-main); font-size: 13px; font-weight: 600;
+      cursor: pointer; border: 1.5px solid rgba(255,255,255,0.2);
+      background: transparent; color: rgba(255,255,255,0.6);
+      transition: all 0.2s;
+    }
+    .kfilter-btn.active {
+      background: var(--color-primary); border-color: var(--color-primary);
+      color: white;
+    }
+  </style>
+</head>
+<body class="kitchen-page">
+
+<!-- Login -->
+<div id="kitchen-login">
+  <div style="font-size:52px; margin-bottom:8px;">👨‍🍳</div>
+  <div style="font-size:22px; font-weight:800; color:white;">จอครัว</div>
+  <div style="font-size:14px; color:rgba(255,255,255,0.5); margin-bottom:8px;">กรอก Admin Key เพื่อเข้าใช้งาน</div>
+  <input type="password" class="kitchen-login-input" id="kitchen-key"
+    placeholder="Admin Key">
+  <button class="btn-kitchen-login" onclick="KitchenDisplay.login()">เข้าสู่ระบบ</button>
+  <div id="kitchen-login-err" style="color:var(--color-danger);font-size:14px;display:none;">
+    Admin Key ไม่ถูกต้อง
+  </div>
+</div>
+
+<!-- Kitchen UI -->
+<div id="kitchen-ui" style="display:none;">
+
+  <!-- Header -->
+  <div class="kitchen-header">
+    <div>
+      <div class="kitchen-title">👨‍🍳 จอครัว</div>
+      <div style="font-size:12px; color:rgba(255,255,255,0.5); margin-top:2px;" id="order-count">
+        กำลังโหลด...
+      </div>
+    </div>
+    <div class="kitchen-clock" id="kitchen-clock">00:00</div>
+  </div>
+
+  <!-- Filter -->
+  <div class="kitchen-filter">
+    <button class="kfilter-btn active" onclick="KitchenDisplay.setFilter('active', this)">
+      🔥 กำลังทำ
+    </button>
+    <button class="kfilter-btn" onclick="KitchenDisplay.setFilter('paid', this)">
+      ✅ ชำระแล้ว
+    </button>
+    <button class="kfilter-btn" onclick="KitchenDisplay.setFilter('all', this)">
+      📋 ทั้งหมด
+    </button>
+    <button class="kfilter-btn" onclick="KitchenDisplay.refresh()" style="margin-left:auto;">
+      🔄
+    </button>
+  </div>
+
+  <!-- Orders Grid -->
+  <div class="kitchen-grid" id="kitchen-grid">
+    <div class="kitchen-empty">
+      <div class="kitchen-empty-icon">✨</div>
+      <div class="kitchen-empty-text">ยังไม่มีออเดอร์</div>
+    </div>
+  </div>
+
+</div>
+
+<script src="js/cart.js"></script>
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script>
+const KitchenDisplay = (() => {
+  let adminKey = '';
+  let allOrders = [];
+  let currentFilter = 'active';
+  let refreshTimer = null;
+
+  // ===== Clock =====
+  function startClock() {
+    function tick() {
+      const el = document.getElementById('kitchen-clock');
+      if (el) {
+        el.textContent = new Date().toLocaleTimeString('th-TH', {
+          hour: '2-digit', minute: '2-digit', second: '2-digit',
+          hour12: false
+        });
+      }
+    }
+    tick();
+    setInterval(tick, 1000);
+  }
+
+  // ===== Login =====
+  function login() {
+    const key = document.getElementById('kitchen-key').value.trim();
+    if (!key) return;
+    adminKey = key;
+
+    API.getSalesReport(key).then(() => {
+      document.getElementById('kitchen-login').style.display = 'none';
+      document.getElementById('kitchen-ui').style.display = 'block';
+      startClock();
+      loadOrders();
+      // Auto-refresh every 20 seconds
+      refreshTimer = setInterval(loadOrders, 20000);
+    }).catch(() => {
+      document.getElementById('kitchen-login-err').style.display = 'block';
+      adminKey = '';
+    });
+  }
+
+  // ===== Load Orders =====
+  async function loadOrders() {
+    try {
+      const result = await API.getOrders(adminKey, '');
+      allOrders = result.orders || [];
+      renderOrders();
+    } catch (err) {
+      console.error('Load orders error:', err);
+    }
+  }
+
+  // ===== Render =====
+  function renderOrders() {
+    const grid = document.getElementById('kitchen-grid');
+    const countEl = document.getElementById('order-count');
+
+    let filtered;
+    if (currentFilter === 'active') {
+      filtered = allOrders.filter(o => o.status === 'cooking' || o.status === 'paid');
+    } else if (currentFilter === 'paid') {
+      filtered = allOrders.filter(o => o.status === 'paid');
+    } else {
+      filtered = allOrders.filter(o => o.status !== 'done');
+    }
+
+    // Sort by created time (oldest first - urgent)
+    filtered.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+    const cookingCount = allOrders.filter(o => o.status === 'cooking').length;
+    countEl.textContent = `กำลังทำ: ${cookingCount} · รอทำ: ${allOrders.filter(o=>o.status==='paid').length}`;
+
+    if (filtered.length === 0) {
+      grid.innerHTML = `
+        <div class="kitchen-empty" style="grid-column:1/-1;">
+          <div class="kitchen-empty-icon">✨</div>
+          <div class="kitchen-empty-text">ไม่มีออเดอร์ที่ต้องทำ</div>
+          <div style="font-size:14px; color:rgba(255,255,255,0.3); margin-top:8px;">ระบบจะโหลดใหม่ทุก 20 วินาที</div>
+        </div>
+      `;
+      return;
+    }
+
+    grid.innerHTML = filtered.map(order => {
+      const ageMin = Math.floor((Date.now() - new Date(order.createdAt)) / 60000);
+      const isUrgent = ageMin >= 15;
+
+      return `
+        <div class="kitchen-card ${isUrgent ? 'urgent' : ''}" id="kcard-${order.orderId}">
+          <div class="kitchen-card-header">
+            <div>
+              <div class="kitchen-order-id">#${order.orderId}</div>
+              <div class="kitchen-order-time">${order.customerName} · ${ageMin} นาทีที่แล้ว ${isUrgent ? '⚠️' : ''}</div>
+            </div>
+            <span class="status-badge ${order.status === 'cooking' ? 'badge-cooking' : 'badge-paid'}">
+              ${order.status === 'cooking' ? '🔥 กำลังทำ' : '✅ ชำระแล้ว'}
+            </span>
+          </div>
+          <div class="kitchen-card-body">
+            ${(order.items || []).map(item => `
+              <div class="kitchen-item">
+                <div class="kitchen-item-qty">${item.quantity}</div>
+                <div class="kitchen-item-name">${item.menuName}</div>
+              </div>
+            `).join('')}
+            ${order.note ? `
+              <div style="margin-top:10px; padding:8px; background:rgba(255,255,255,0.06); border-radius:8px; font-size:13px; color:rgba(255,255,255,0.7);">
+                📝 ${order.note}
+              </div>
+            ` : ''}
+          </div>
+          <div class="kitchen-card-footer" style="display:flex; gap:8px;">
+            ${order.status === 'paid' ? `
+              <button onclick="KitchenDisplay.startCooking('${order.orderId}')"
+                style="flex:1; padding:10px; background:rgba(255,107,53,0.8); color:white; border:none; border-radius:8px; font-family:var(--font-main); font-size:14px; font-weight:700; cursor:pointer;">
+                🔥 เริ่มทำ
+              </button>
+            ` : ''}
+            <button class="btn-done" style="${order.status === 'paid' ? 'flex:1;' : ''}"
+              onclick="KitchenDisplay.markDone('${order.orderId}')">
+              ✅ เสร็จแล้ว
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ===== Actions =====
+  async function startCooking(orderId) {
+    try {
+      await API.updateOrderStatus(adminKey, orderId, 'cooking');
+      await loadOrders();
+    } catch(err) {
+      alert('เกิดข้อผิดพลาด: ' + err.message);
+    }
+  }
+
+  async function markDone(orderId) {
+    const card = document.getElementById('kcard-' + orderId);
+    if (card) {
+      card.style.opacity = '0.5';
+      card.style.transform = 'scale(0.96)';
+    }
+    try {
+      await API.updateOrderStatus(adminKey, orderId, 'done');
+      await loadOrders();
+    } catch(err) {
+      if (card) { card.style.opacity = '1'; card.style.transform = ''; }
+      alert('เกิดข้อผิดพลาด: ' + err.message);
+    }
+  }
+
+  function setFilter(filter, btn) {
+    currentFilter = filter;
+    document.querySelectorAll('.kfilter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderOrders();
+  }
+
+  function refresh() { loadOrders(); }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('kitchen-key').addEventListener('keydown', e => {
+      if (e.key === 'Enter') login();
+    });
+  });
+
+  return { login, loadOrders, startCooking, markDone, setFilter, refresh };
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#06C755">
+  <title>สรุปออเดอร์</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js"></script>
+</head>
+<body>
+
+<!-- Header -->
+<header class="app-header">
+  <a href="cart.html" class="header-back">←</a>
+  <span class="header-title">สรุปออเดอร์</span>
+  <div style="width:36px;"></div>
+</header>
+
+<main class="page" style="padding-bottom: 120px;">
+  <div class="page-content" style="padding-top:16px;">
+
+    <!-- Order Items -->
+    <div class="checkout-section">
+      <div class="checkout-section-title">รายการอาหาร</div>
+      <div class="order-items-list" id="order-items-list">
+        <!-- Populated by script -->
+      </div>
+    </div>
+
+    <!-- Price Breakdown -->
+    <div class="checkout-section">
+      <div class="checkout-section-title">สรุปราคา</div>
+      <div class="price-breakdown">
+        <div class="price-row">
+          <span>ราคาอาหาร</span>
+          <span id="subtotal-val">฿0</span>
+        </div>
+        <div class="price-row">
+          <span>ค่าบริการ</span>
+          <span>ฟรี</span>
+        </div>
+        <div class="price-row total">
+          <span>ยอดรวมทั้งหมด</span>
+          <span class="price-value" id="total-val">฿0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment Method -->
+    <div class="checkout-section">
+      <div class="checkout-section-title">วิธีชำระเงิน</div>
+      <div class="payment-method">
+        <div class="payment-icon">💚</div>
+        <div class="payment-info">
+          <div class="payment-name">LINE Pay</div>
+          <div class="payment-desc">ชำระผ่าน LINE Pay อย่างปลอดภัย</div>
+        </div>
+        <span class="payment-check">✅</span>
+      </div>
+    </div>
+
+    <!-- Customer Note -->
+    <div class="checkout-section">
+      <div class="checkout-section-title">หมายเหตุ</div>
+      <div id="note-display" style="font-size:14px; color: var(--color-gray-600, #4B5563);">
+        ไม่มีหมายเหตุ
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<!-- Confirm Bar -->
+<div style="
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 480px;
+  background: white; padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -4px 16px rgba(0,0,0,0.1);
+  z-index: 100;
+">
+  <button class="btn btn-primary" id="confirm-btn" onclick="CheckoutPage.confirm()">
+    <span>ชำระเงินด้วย LINE Pay</span>
+    <span>💚</span>
+  </button>
+</div>
+
+<!-- Processing Modal -->
+<div class="modal-overlay" id="processing-modal">
+  <div class="modal" style="text-align:center; padding:40px 24px;">
+    <div style="font-size:48px; margin-bottom:16px;">⏳</div>
+    <div style="font-size:18px; font-weight:700; margin-bottom:8px;">กำลังสร้างออเดอร์...</div>
+    <div style="font-size:14px; color:var(--color-gray-500);">กรุณารอสักครู่</div>
+    <div class="loading-spinner" style="margin: 20px auto 0;"></div>
+  </div>
+</div>
+
+<script src="js/cart.js"></script>
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script>
+const CheckoutPage = (() => {
+
+  function render() {
+    const items = Cart.getItems();
+    const total = Cart.getTotal();
+
+    if (items.length === 0) {
+      window.location.href = 'cart.html';
+      return;
+    }
+
+    // Order items
+    const listEl = document.getElementById('order-items-list');
+    listEl.innerHTML = items.map(item => `
+      <div class="order-item-row">
+        <div>
+          <span class="order-item-name">${item.name}</span>
+          <span class="order-item-qty"> × ${item.qty}</span>
+        </div>
+        <span class="order-item-subtotal">${formatPrice(item.price * item.qty)}</span>
+      </div>
+    `).join('<hr class="divider">');
+
+    // Prices
+    document.getElementById('subtotal-val').textContent = formatPrice(total);
+    document.getElementById('total-val').textContent = formatPrice(total);
+
+    // Note
+    const note = localStorage.getItem('order_note') || '';
+    const noteEl = document.getElementById('note-display');
+    if (noteEl) noteEl.textContent = note || 'ไม่มีหมายเหตุ';
+  }
+
+  async function confirm() {
+    const btn = document.getElementById('confirm-btn');
+    btn.disabled = true;
+    document.getElementById('processing-modal').classList.add('show');
+
+    try {
+      await LiffManager.init();
+
+      const orderPayload = Cart.toOrderPayload(
+        LiffManager.getUserId(),
+        LiffManager.getDisplayName()
+      );
+
+      // Add note
+      const note = localStorage.getItem('order_note') || '';
+      orderPayload.note = note;
+
+      // 1. Create order
+      const orderResult = await API.createOrder(orderPayload);
+      const orderId = orderResult.orderId;
+
+      // 2. Create payment
+      const paymentResult = await API.createPayment(orderId);
+
+      // 3. Open LINE Pay
+      if (paymentResult.paymentUrl) {
+        Cart.clear();
+        localStorage.removeItem('order_note');
+        // Redirect to LINE Pay
+        window.location.href = paymentResult.paymentUrl;
+      } else {
+        throw new Error('ไม่สามารถสร้าง payment URL ได้');
+      }
+
+    } catch (err) {
+      console.error('Checkout error:', err);
+      document.getElementById('processing-modal').classList.remove('show');
+      btn.disabled = false;
+      Toast.error('เกิดข้อผิดพลาด: ' + (err.message || 'กรุณาลองใหม่'));
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    render();
+
+    // Read note from cart page
+    const noteInput = document.getElementById('order-note');
+    const savedNote = localStorage.getItem('order_note') || '';
+    if (noteInput) noteInput.value = savedNote;
+  });
+
+  return { confirm };
+})();
+</script>
+</body>
+</html>
