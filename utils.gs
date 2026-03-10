@@ -1,0 +1,203 @@
+/**
+ * utils.gs - Utility functions and LINE Messaging API
+ */
+
+// ===== SHEET HELPERS =====
+
+/**
+ * Get a sheet by name, throw if not found
+ */
+function getSheet(name) {
+  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  const sheet = ss.getSheetByName(name);
+  if (!sheet) throw new Error(`Sheet "${name}" not found`);
+  return sheet;
+}
+
+/**
+ * Convert row array + headers to object
+ */
+function rowToObj(headers, row) {
+  const obj = {};
+  headers.forEach((h, i) => {
+    obj[h] = row[i] !== undefined ? row[i] : '';
+  });
+  return obj;
+}
+
+/**
+ * Generate a unique order ID
+ * Format: ORD-{YYYYMMDD}-{random 4 digits}
+ */
+function generateOrderId() {
+  const now = new Date();
+  const date = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyyMMdd');
+  const rand = Math.floor(1000 + Math.random() * 9000);
+  return `ORD-${date}-${rand}`;
+}
+
+// ===== LOGGING =====
+
+function logInfo(fn, message) {
+  console.log(`[INFO][${fn}] ${message}`);
+  try {
+    const sheet = getSheet('Logs');
+    sheet.appendRow([new Date().toISOString(), 'INFO', fn, message]);
+  } catch { /* logs sheet optional */ }
+}
+
+function logError(fn, err, context) {
+  const msg = err?.message || String(err);
+  console.error(`[ERROR][${fn}] ${msg}`, context || '');
+  try {
+    const sheet = getSheet('Logs');
+    sheet.appendRow([new Date().toISOString(), 'ERROR', fn, msg, JSON.stringify(context || {})]);
+  } catch { /* logs sheet optional */ }
+}
+
+// ===== LINE MESSAGING API =====
+
+/**
+ * Notify restaurant owner of new order
+ */
+function notifyRestaurant(orderId, order) {
+  if (!CONFIG.LINE_CHANNEL_ACCESS_TOKEN || !CONFIG.LINE_OWNER_USER_ID) return;
+
+  const items = (order.items || [])
+    .map(i => `• ${i.menuName} × ${i.quantity}`)
+    .join('\n');
+
+  const message = `🔔 มีออเดอร์ใหม่!\n\n` +
+    `📋 Order: #${orderId}\n` +
+    `👤 ลูกค้า: ${order.customerName || 'Guest'}\n\n` +
+    `รายการ:\n${items}\n\n` +
+    `💰 ยอดรวม: ฿${Number(order.totalPrice).toLocaleString('th-TH')}\n` +
+    `⏰ เวลา: ${new Date().toLocaleTimeString('th-TH')}` +
+    (order.note ? `\n\n📝 หมายเหตุ: ${order.note}` : '');
+
+  sendLineMessage(CONFIG.LINE_OWNER_USER_ID, message);
+}
+
+/**
+ * Notify customer when order is done
+ */
+function notifyCustomerDone(userId, orderId) {
+  if (!CONFIG.LINE_CHANNEL_ACCESS_TOKEN || !userId) return;
+
+  const message = `✅ อาหารของคุณพร้อมแล้ว!\n\n` +
+    `📋 Order: #${orderId}\n\n` +
+    `🍽️ กรุณามารับอาหารได้เลยครับ/ค่ะ`;
+
+  sendLineMessage(userId, message);
+}
+
+/**
+ * Send a LINE message to a user
+ */
+function sendLineMessage(userId, text) {
+  const url = 'https://api.line.me/v2/bot/message/push';
+  const payload = JSON.stringify({
+    to: userId,
+    messages: [{ type: 'text', text }],
+  });
+
+  const options = {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${CONFIG.LINE_CHANNEL_ACCESS_TOKEN}`,
+    },
+    payload,
+    muteHttpExceptions: true,
+  };
+
+  try {
+    const response = UrlFetchApp.fetch(url, options);
+    if (response.getResponseCode() !== 200) {
+      logError('sendLineMessage', new Error('LINE API error: ' + response.getContentText()), { userId });
+    }
+  } catch (err) {
+    logError('sendLineMessage', err, { userId });
+  }
+}
+
+// ===== SETUP HELPER =====
+/**
+ * Run this once to set up all required sheets
+ * Go to Apps Script > Run > setupSheets
+ */
+function setupSheets() {
+  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+
+  // Menu sheet
+  createSheetIfNotExists(ss, 'Menu', [
+    'id', 'name', 'description', 'price', 'image_url', 'category', 'status'
+  ]);
+
+  // Orders sheet
+  createSheetIfNotExists(ss, 'Orders', [
+    'order_id', 'user_id', 'customer_name', 'total_price', 'status',
+    'payment_status', 'created_at', 'note', 'transaction_id'
+  ]);
+
+  // OrderItems sheet
+  createSheetIfNotExists(ss, 'OrderItems', [
+    'order_id', 'menu_id', 'menu_name', 'price', 'quantity'
+  ]);
+
+  // Customers sheet
+  createSheetIfNotExists(ss, 'Customers', [
+    'user_id', 'display_name', 'last_order_time'
+  ]);
+
+  // Logs sheet
+  createSheetIfNotExists(ss, 'Logs', [
+    'timestamp', 'level', 'function', 'message', 'context'
+  ]);
+
+  Logger.log('✅ All sheets created successfully!');
+}
+
+function createSheetIfNotExists(ss, name, headers) {
+  let sheet = ss.getSheetByName(name);
+  if (!sheet) {
+    sheet = ss.insertSheet(name);
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sheet.getRange(1, 1, 1, headers.length)
+      .setBackground('#06C755')
+      .setFontColor('#FFFFFF')
+      .setFontWeight('bold');
+    Logger.log(`Created sheet: ${name}`);
+  } else {
+    Logger.log(`Sheet already exists: ${name}`);
+  }
+  return sheet;
+}
+
+/**
+ * Seed some sample menu items for testing
+ */
+function seedSampleMenu() {
+  const sheet = getSheet('Menu');
+
+  const sampleItems = [
+    [1, 'ก๋วยเตี๋ยวหมู', 'น้ำใสหรือน้ำตก เส้นใหญ่หรือเส้นเล็ก', 60, '', 'ก๋วยเตี๋ยว', 'active'],
+    [2, 'ก๋วยเตี๋ยวเนื้อ', 'น้ำใสเนื้อตุ๋น หอมมาก', 70, '', 'ก๋วยเตี๋ยว', 'active'],
+    [3, 'ข้าวหมูแดง', 'ข้าวหมูแดงหน้าเยอะ ราดซอส', 60, '', 'ข้าว', 'active'],
+    [4, 'ข้าวหมูกรอบ', 'ข้าวหมูกรอบกับน้ำจิ้ม', 60, '', 'ข้าว', 'active'],
+    [5, 'ผัดไทยกุ้งสด', 'ผัดไทยกุ้งสดไข่ใส่ถั่วงอก', 80, '', 'อาหารจานเดียว', 'active'],
+    [6, 'ข้าวผัดหมู', 'ข้าวผัดหมูไข่ดาว', 70, '', 'ข้าว', 'active'],
+    [7, 'ต้มยำกุ้ง', 'ต้มยำกุ้งน้ำข้น รสจัด', 120, '', 'อาหารจานเดียว', 'active'],
+    [8, 'แกงเขียวหวานไก่', 'แกงเขียวหวานไก่ใส่มะเขือ', 90, '', 'อาหารจานเดียว', 'active'],
+    [9, 'ผัดกะเพราหมูสับ', 'หมูสับผัดกะเพราไข่ดาว', 70, '', 'ข้าว', 'active'],
+    [10, 'ผัดกะเพราไก่', 'ไก่ผัดกะเพราไข่ดาว', 70, '', 'ข้าว', 'active'],
+    [11, 'น้ำเปล่า', 'น้ำดื่ม 600ml', 10, '', 'เครื่องดื่ม', 'active'],
+    [12, 'น้ำส้มคั้น', 'น้ำส้มสดคั้น', 35, '', 'เครื่องดื่ม', 'active'],
+    [13, 'ชาเย็น', 'ชาไทยเย็นหวาน', 30, '', 'เครื่องดื่ม', 'active'],
+    [14, 'กาแฟเย็น', 'กาแฟสดเย็น', 35, '', 'เครื่องดื่ม', 'active'],
+    [15, 'น้ำแข็ง', 'น้ำแข็งถุง', 5, '', 'เครื่องดื่ม', 'active'],
+  ];
+
+  sampleItems.forEach(row => sheet.appendRow(row));
+  Logger.log('✅ Sample menu seeded!');
+}
