@@ -16,8 +16,7 @@
       background:var(--color-white); cursor:pointer; transition:all 0.2s;
     }
     .payment-option.selected {
-      border-color:var(--color-primary);
-      background:var(--color-primary-light);
+      border-color:var(--color-primary); background:var(--color-primary-light);
     }
     .payment-option-icon {
       width:44px; height:44px; border-radius:var(--radius-sm);
@@ -27,8 +26,8 @@
     .icon-linepay { background:var(--color-primary); }
     .icon-cash    { background:#F59E0B; }
     .payment-option-info { flex:1; }
-    .payment-option-name  { font-weight:700; font-size:15px; color:var(--color-gray-900); }
-    .payment-option-desc  { font-size:12px; color:var(--color-gray-500); margin-top:2px; }
+    .payment-option-name { font-weight:700; font-size:15px; color:var(--color-gray-900); }
+    .payment-option-desc { font-size:12px; color:var(--color-gray-500); margin-top:2px; }
     .payment-radio {
       width:20px; height:20px; border-radius:50%;
       border:2px solid var(--color-gray-300);
@@ -39,15 +38,38 @@
       border-color:var(--color-primary); background:var(--color-primary);
     }
     .payment-option.selected .payment-radio::after {
-      content:''; width:8px; height:8px;
-      border-radius:50%; background:white;
+      content:''; width:8px; height:8px; border-radius:50%; background:white;
     }
     .confirm-bar {
       position:fixed; bottom:0; left:50%; transform:translateX(-50%);
-      width:100%; max-width:480px;
-      background:white; padding:12px 16px;
+      width:100%; max-width:480px; background:white; padding:12px 16px;
       padding-bottom:calc(12px + env(safe-area-inset-bottom, 0px) + 50px);
       box-shadow:0 -4px 16px rgba(0,0,0,0.1); z-index:100;
+    }
+
+    /* ===== ชื่อผู้สั่ง ===== */
+    .customer-card {
+      display:flex; align-items:center; gap:12px;
+      padding:14px 16px;
+      background:var(--color-primary-light);
+      border-radius:var(--radius-md);
+      border:1.5px solid var(--color-primary);
+    }
+    .customer-avatar {
+      width:40px; height:40px; border-radius:50%;
+      background:var(--color-primary);
+      display:flex; align-items:center; justify-content:center;
+      font-size:20px; flex-shrink:0; overflow:hidden;
+    }
+    .customer-avatar img { width:100%; height:100%; object-fit:cover; }
+    .customer-name { font-weight:700; font-size:15px; color:var(--color-gray-900); }
+    .customer-label { font-size:12px; color:var(--color-gray-500); margin-bottom:2px; }
+
+    /* ===== กันกดซ้ำ ===== */
+    .btn-submitting {
+      opacity:0.7 !important;
+      cursor:not-allowed !important;
+      pointer-events:none !important;
     }
   </style>
 </head>
@@ -62,11 +84,25 @@
 <main class="page" style="padding-bottom:180px;">
   <div class="page-content" style="padding-top:16px;">
 
+    <!-- ✅ ชื่อผู้สั่ง -->
+    <div class="checkout-section">
+      <div class="checkout-section-title">ผู้สั่ง</div>
+      <div class="customer-card">
+        <div class="customer-avatar" id="customer-avatar">👤</div>
+        <div>
+          <div class="customer-label">ชื่อ LINE</div>
+          <div class="customer-name" id="customer-name">กำลังโหลด...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- รายการอาหาร -->
     <div class="checkout-section">
       <div class="checkout-section-title">รายการอาหาร</div>
       <div class="order-items-list" id="order-items-list"></div>
     </div>
 
+    <!-- สรุปราคา -->
     <div class="checkout-section">
       <div class="checkout-section-title">สรุปราคา</div>
       <div class="price-breakdown">
@@ -79,11 +115,10 @@
       </div>
     </div>
 
-    <!-- ✅ เลือกวิธีชำระเงิน -->
+    <!-- วิธีชำระเงิน -->
     <div class="checkout-section">
       <div class="checkout-section-title">เลือกวิธีชำระเงิน</div>
       <div class="payment-options">
-
         <div class="payment-option selected" id="opt-linepay"
           onclick="CheckoutPage.selectPayment('linepay')">
           <div class="payment-option-icon icon-linepay">💚</div>
@@ -93,7 +128,6 @@
           </div>
           <div class="payment-radio" id="radio-linepay"></div>
         </div>
-
         <div class="payment-option" id="opt-cash"
           onclick="CheckoutPage.selectPayment('cash')">
           <div class="payment-option-icon icon-cash">💵</div>
@@ -103,10 +137,10 @@
           </div>
           <div class="payment-radio" id="radio-cash"></div>
         </div>
-
       </div>
     </div>
 
+    <!-- หมายเหตุ -->
     <div class="checkout-section">
       <div class="checkout-section-title">หมายเหตุ</div>
       <div id="note-display" style="font-size:14px; color:var(--color-gray-600, #4B5563);">ไม่มีหมายเหตุ</div>
@@ -127,8 +161,10 @@
 <div class="modal-overlay" id="processing-modal">
   <div class="modal" style="text-align:center; padding:40px 24px;">
     <div style="font-size:48px; margin-bottom:16px;">⏳</div>
-    <div style="font-size:18px; font-weight:700; margin-bottom:8px;">กำลังสร้างออเดอร์...</div>
-    <div style="font-size:14px; color:var(--color-gray-500);">กรุณารอสักครู่</div>
+    <div style="font-size:18px; font-weight:700; margin-bottom:8px;" id="processing-text">
+      กำลังสร้างออเดอร์...
+    </div>
+    <div style="font-size:14px; color:var(--color-gray-500);">กรุณารอสักครู่ อย่ากดซ้ำ</div>
     <div class="loading-spinner" style="margin:20px auto 0;"></div>
   </div>
 </div>
@@ -139,26 +175,23 @@
     <div class="modal-handle"></div>
     <div style="text-align:center; padding:16px 0 8px;">
       <div style="font-size:64px; margin-bottom:16px;">✅</div>
-      <div style="font-size:22px; font-weight:700; margin-bottom:8px;">สั่งอาหารสำเร็จ!</div>
-      <div style="font-size:14px; color:var(--color-gray-500); margin-bottom:16px;">
-        ออเดอร์ของคุณถูกส่งไปยังร้านแล้ว
-      </div>
-      <div style="
-        background:#FEF3C7; border-radius:12px; padding:14px;
-        margin-bottom:16px; font-size:14px; color:#92400E; text-align:left;
-      ">
+      <div style="font-size:22px; font-weight:700; margin-bottom:4px;">สั่งอาหารสำเร็จ!</div>
+      <div style="font-size:14px; color:var(--color-gray-500); margin-bottom:16px;"
+        id="cash-customer-name"></div>
+      <div style="background:#FEF3C7; border-radius:12px; padding:14px;
+        margin-bottom:16px; font-size:14px; color:#92400E; text-align:left;">
         💵 <strong>กรุณาชำระเงินสดที่ร้าน</strong><br>
         <span style="font-size:13px; display:block; margin-top:4px;">
           แจ้ง Order ID ให้พนักงานเมื่อมารับอาหาร
         </span>
       </div>
-      <div style="
-        background:var(--color-gray-100); border-radius:12px;
-        padding:14px; margin-bottom:20px;
-      ">
+      <div style="background:var(--color-gray-100); border-radius:12px;
+        padding:14px; margin-bottom:20px;">
         <div style="font-size:12px; color:var(--color-gray-500); margin-bottom:4px;">Order ID</div>
-        <div style="font-size:22px; font-weight:800; color:var(--color-gray-900);" id="cash-order-id">#–</div>
-        <div style="font-size:18px; font-weight:700; color:var(--color-primary-dark); margin-top:4px;" id="cash-order-total"></div>
+        <div style="font-size:22px; font-weight:800; color:var(--color-gray-900);"
+          id="cash-order-id">#–</div>
+        <div style="font-size:18px; font-weight:700; color:var(--color-primary-dark); margin-top:4px;"
+          id="cash-order-total"></div>
       </div>
       <button class="btn btn-primary" onclick="CheckoutPage.closeCashSuccess()">
         ติดตามสถานะออเดอร์ →
@@ -175,7 +208,9 @@ const CheckoutPage = (() => {
   let selectedPayment = 'linepay';
   let lastOrderId = null;
   let lastTotal = 0;
+  let isSubmitting = false; // ✅ ป้องกันกดซ้ำ
 
+  // ===== RENDER =====
   function render() {
     const items = Cart.getItems();
     const total = Cart.getTotal();
@@ -194,16 +229,37 @@ const CheckoutPage = (() => {
 
     document.getElementById('subtotal-val').textContent = formatPrice(total);
     document.getElementById('total-val').textContent = formatPrice(total);
-
     const note = localStorage.getItem('order_note') || '';
     document.getElementById('note-display').textContent = note || 'ไม่มีหมายเหตุ';
   }
 
+  // ===== LOAD CUSTOMER INFO =====
+  async function loadCustomerInfo() {
+    try {
+      await LiffManager.init();
+      const name = LiffManager.getDisplayName();
+      const profile = LiffManager.getProfile();
+
+      document.getElementById('customer-name').textContent = name || 'Guest';
+
+      // ใส่รูป profile ถ้ามี
+      if (profile && profile.pictureUrl) {
+        document.getElementById('customer-avatar').innerHTML =
+          `<img src="${profile.pictureUrl}" alt="${name}">`;
+      } else {
+        document.getElementById('customer-avatar').textContent = '👤';
+      }
+    } catch (e) {
+      document.getElementById('customer-name').textContent = 'Guest';
+    }
+  }
+
+  // ===== SELECT PAYMENT =====
   function selectPayment(method) {
+    if (isSubmitting) return; // ✅ ป้องกันเปลี่ยนระหว่าง submit
     selectedPayment = method;
     document.getElementById('opt-linepay').classList.toggle('selected', method === 'linepay');
     document.getElementById('opt-cash').classList.toggle('selected', method === 'cash');
-
     const btn = document.getElementById('confirm-btn');
     if (method === 'linepay') {
       document.getElementById('confirm-btn-text').textContent = 'ชำระเงินด้วย LINE Pay';
@@ -216,47 +272,73 @@ const CheckoutPage = (() => {
     }
   }
 
+  // ===== CONFIRM =====
   async function confirm() {
+    // ✅ ป้องกันกดซ้ำทุกกรณี
+    if (isSubmitting) return;
+    isSubmitting = true;
+
     const btn = document.getElementById('confirm-btn');
+    btn.classList.add('btn-submitting');
     btn.disabled = true;
     document.getElementById('processing-modal').classList.add('show');
+    document.getElementById('processing-text').textContent = 'กำลังสร้างออเดอร์...';
 
     try {
       await LiffManager.init();
-      const orderPayload = Cart.toOrderPayload(LiffManager.getUserId(), LiffManager.getDisplayName());
+      const name = LiffManager.getDisplayName();
+      const orderPayload = Cart.toOrderPayload(LiffManager.getUserId(), name);
       orderPayload.note = localStorage.getItem('order_note') || '';
       orderPayload.paymentMethod = selectedPayment;
 
+      // สร้างออเดอร์
       const orderResult = await API.createOrder(orderPayload);
       const orderId = orderResult.orderId;
       lastOrderId = orderId;
 
-      document.getElementById('processing-modal').classList.remove('show');
-
       if (selectedPayment === 'linepay') {
+        document.getElementById('processing-text').textContent = 'กำลังเชื่อมต่อ LINE Pay...';
         const paymentResult = await API.createPayment(orderId);
         if (paymentResult.paymentUrl) {
           Cart.clear();
           localStorage.removeItem('order_note');
+          // ✅ redirect ออกไปเลย ไม่ต้อง reset isSubmitting
           window.location.href = paymentResult.paymentUrl;
         } else {
           throw new Error('ไม่สามารถสร้าง payment URL ได้');
         }
+
       } else {
-        // เงินสด — แสดง success popup
+        // เงินสด
         Cart.clear();
         localStorage.removeItem('order_note');
         localStorage.setItem('last_order_id', orderId);
+        document.getElementById('processing-modal').classList.remove('show');
         document.getElementById('cash-order-id').textContent = '#' + orderId;
         document.getElementById('cash-order-total').textContent = formatPrice(lastTotal);
+        // ✅ แสดงชื่อผู้สั่งใน popup ด้วย
+        document.getElementById('cash-customer-name').textContent =
+          `สั่งโดย: ${name || 'Guest'}`;
         document.getElementById('cash-success-modal').classList.add('show');
       }
 
     } catch (err) {
       console.error('Checkout error:', err);
       document.getElementById('processing-modal').classList.remove('show');
+
+      // ✅ reset ทุกอย่างเมื่อ error
+      isSubmitting = false;
+      btn.classList.remove('btn-submitting');
       btn.disabled = false;
-      Toast.error('เกิดข้อผิดพลาด: ' + (err.message || 'กรุณาลองใหม่'));
+
+      // แสดง error ที่เข้าใจง่าย
+      let errMsg = 'กรุณาลองใหม่อีกครั้ง';
+      if (err.message && err.message.includes('LINE Pay')) {
+        errMsg = 'LINE Pay ยังไม่พร้อมใช้งาน กรุณาเลือกชำระเงินสดแทน';
+      } else if (err.message) {
+        errMsg = err.message;
+      }
+      Toast.error(errMsg);
     }
   }
 
@@ -265,7 +347,11 @@ const CheckoutPage = (() => {
     window.location.href = 'order-status.html?orderId=' + lastOrderId;
   }
 
-  document.addEventListener('DOMContentLoaded', render);
+  document.addEventListener('DOMContentLoaded', () => {
+    render();
+    loadCustomerInfo();
+  });
+
   return { confirm, selectPayment, closeCashSuccess };
 })();
 </script>
