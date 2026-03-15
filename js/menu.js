@@ -177,84 +177,90 @@ const MenuPage = (() => {
 // ===== OPTIONS POPUP =====
 const OptionsPopup = (() => {
   let currentItem = null;
-  let onConfirm = null;
-  let selections = {}; // groupKey -> { choice_name, choice_extra_price }
+  let onConfirm   = null;
+  let selections  = {};
 
   function open(item, callback) {
     currentItem = item;
-    onConfirm = callback;
-    selections = {};
+    onConfirm   = callback;
+    selections  = {};
 
-    // set default selections
+    // ตั้งค่า default
     item.optionGroups.forEach(group => {
       const def = group.choices.find(c => c.is_default) || group.choices[0];
-      if (def) selections[group.group_key] = def;
+      if (def) selections[group.group_key] = {
+        choice_name: def.choice_name,
+        choice_extra_price: Number(def.choice_extra_price) || 0,
+      };
     });
 
-    renderPopup(item);
+    renderPopup();
     document.getElementById('options-overlay').classList.add('show');
   }
 
-  function renderPopup(item) {
-    const extraNow = calcExtra();
-    const totalPrice = item.price + extraNow;
+  // ✅ renderPopup ไม่รับ argument — ใช้ currentItem และ selections ที่เก็บไว้
+  function renderPopup() {
+    if (!currentItem) return;
+    const extra      = calcExtra();
+    const totalPrice = currentItem.price + extra;
 
-    document.getElementById('options-item-name').textContent = item.name;
-    document.getElementById('options-base-price').textContent = formatPrice(item.price);
+    document.getElementById('options-item-name').textContent  = currentItem.name;
+    document.getElementById('options-base-price').textContent = formatPrice(currentItem.price);
 
-    // ใช้ data-* แทน inline onclick หลีกเลี่ยงปัญหาอักษรไทยใน HTML attribute
-    const groupsHtml = item.optionGroups.map(group => `
-      <div class="option-group">
-        <div class="option-group-title">
-          ${group.group_name}
-          ${group.required ? '<span class="required-badge">จำเป็น</span>' : ''}
-        </div>
-        <div class="option-choices">
-          ${group.choices.map(choice => {
-            const isSelected = selections[group.group_key]?.choice_name === choice.choice_name;
-            const extraLabel = choice.choice_extra_price > 0
-              ? `<span class="extra-price">+${choice.choice_extra_price}</span>` : '';
-            return `
-              <div class="option-choice ${isSelected ? 'selected' : ''}"
-                data-group="${group.group_key}"
-                data-choice="${encodeURIComponent(choice.choice_name)}"
-                data-extra="${choice.choice_extra_price}">
-                <div class="choice-radio ${isSelected ? 'active' : ''}"></div>
-                <span class="choice-name">${choice.choice_name}</span>
-                ${extraLabel}
-              </div>`;
-          }).join('')}
-        </div>
-      </div>`).join('');
+    const groupsHtml = currentItem.optionGroups.map(group => {
+      const selectedChoice = selections[group.group_key];
+      return `
+        <div class="option-group">
+          <div class="option-group-title">
+            ${group.group_name}
+            ${group.required ? '<span class="required-badge">จำเป็น</span>' : ''}
+          </div>
+          <div class="option-choices">
+            ${group.choices.map(choice => {
+              const isSelected = selectedChoice?.choice_name === choice.choice_name;
+              const extraLabel = choice.choice_extra_price > 0
+                ? `<span class="extra-price">+${choice.choice_extra_price}</span>` : '';
+              return `
+                <div class="option-choice ${isSelected ? 'selected' : ''}"
+                  data-group="${group.group_key}"
+                  data-choice="${encodeURIComponent(choice.choice_name)}"
+                  data-extra="${choice.choice_extra_price || 0}">
+                  <div class="choice-radio ${isSelected ? 'active' : ''}"></div>
+                  <span class="choice-name">${choice.choice_name}</span>
+                  ${extraLabel}
+                </div>`;
+            }).join('')}
+          </div>
+        </div>`;
+    }).join('');
 
     document.getElementById('options-groups').innerHTML = groupsHtml;
-    document.getElementById('options-confirm-btn').textContent =
-      `เพิ่มใส่ตะกร้า — ${formatPrice(totalPrice)}`;
 
-    // ผูก event listener หลัง render เสร็จ
+    // อัปเดตปุ่ม
+    const btn = document.getElementById('options-confirm-btn');
+    if (btn) btn.textContent = `เพิ่มใส่ตะกร้า — ${formatPrice(totalPrice)}`;
+
+    // ✅ ผูก event ใหม่ทุกครั้งหลัง render
     document.querySelectorAll('#options-groups .option-choice').forEach(el => {
-      el.addEventListener('click', function() {
-        const groupKey   = this.dataset.group;
-        const choiceName = decodeURIComponent(this.dataset.choice);
-        const extraPrice = Number(this.dataset.extra);
-        select(groupKey, choiceName, extraPrice);
+      el.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const gk    = this.getAttribute('data-group');
+        const name  = decodeURIComponent(this.getAttribute('data-choice'));
+        const extra = Number(this.getAttribute('data-extra')) || 0;
+        // ✅ อัปเดต selections โดยตรง ไม่สร้างใหม่
+        selections[gk] = { choice_name: name, choice_extra_price: extra };
+        renderPopup(); // re-render เฉพาะ popup
       });
     });
   }
 
-  function select(groupKey, choiceName, extraPrice) {
-    selections[groupKey] = { choice_name: choiceName, choice_extra_price: Number(extraPrice) };
-    renderPopup(currentItem);
-  }
-
   function calcExtra() {
-    return Object.values(selections).reduce((s, c) => s + (c.choice_extra_price || 0), 0);
+    return Object.values(selections).reduce((s, c) => s + (Number(c.choice_extra_price) || 0), 0);
   }
 
   function confirm() {
     if (!currentItem) return;
 
-    // ตรวจว่าเลือกครบทุก required group
     const missing = currentItem.optionGroups
       .filter(g => g.required && !selections[g.group_key])
       .map(g => g.group_name);
@@ -264,24 +270,29 @@ const OptionsPopup = (() => {
       return;
     }
 
+    // ✅ เก็บข้อมูลก่อน close
     const selectedOptions = Object.entries(selections).map(([group_key, sel]) => ({
       group_key,
-      choice_name: sel.choice_name,
+      choice_name:        sel.choice_name,
       choice_extra_price: sel.choice_extra_price,
     }));
+    const extraPrice  = calcExtra();
+    const cb          = onConfirm; // เก็บ callback ก่อน
 
-    const extraPrice = calcExtra();
-    close();
-    if (onConfirm) onConfirm(selectedOptions, extraPrice);
+    close(); // close แล้ว currentItem และ onConfirm จะเป็น null
+
+    if (cb) cb(selectedOptions, extraPrice); // ✅ เรียก callback หลัง close
   }
 
   function close() {
-    document.getElementById('options-overlay').classList.remove('show');
+    const overlay = document.getElementById('options-overlay');
+    if (overlay) overlay.classList.remove('show');
     currentItem = null;
-    onConfirm = null;
+    onConfirm   = null;
+    selections  = {};
   }
 
-  return { open, select, confirm, close };
+  return { open, confirm, close };
 })();
 
 document.addEventListener('DOMContentLoaded', MenuPage.init);
