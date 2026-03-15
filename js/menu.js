@@ -202,6 +202,7 @@ const OptionsPopup = (() => {
     document.getElementById('options-item-name').textContent = item.name;
     document.getElementById('options-base-price').textContent = formatPrice(item.price);
 
+    // ใช้ data-* แทน inline onclick หลีกเลี่ยงปัญหาอักษรไทยใน HTML attribute
     const groupsHtml = item.optionGroups.map(group => `
       <div class="option-group">
         <div class="option-group-title">
@@ -215,7 +216,9 @@ const OptionsPopup = (() => {
               ? `<span class="extra-price">+${choice.choice_extra_price}</span>` : '';
             return `
               <div class="option-choice ${isSelected ? 'selected' : ''}"
-                onclick="OptionsPopup.select('${group.group_key}', '${choice.choice_name}', ${choice.choice_extra_price})">
+                data-group="${group.group_key}"
+                data-choice="${encodeURIComponent(choice.choice_name)}"
+                data-extra="${choice.choice_extra_price}">
                 <div class="choice-radio ${isSelected ? 'active' : ''}"></div>
                 <span class="choice-name">${choice.choice_name}</span>
                 ${extraLabel}
@@ -227,6 +230,16 @@ const OptionsPopup = (() => {
     document.getElementById('options-groups').innerHTML = groupsHtml;
     document.getElementById('options-confirm-btn').textContent =
       `เพิ่มใส่ตะกร้า — ${formatPrice(totalPrice)}`;
+
+    // ผูก event listener หลัง render เสร็จ
+    document.querySelectorAll('#options-groups .option-choice').forEach(el => {
+      el.addEventListener('click', function() {
+        const groupKey   = this.dataset.group;
+        const choiceName = decodeURIComponent(this.dataset.choice);
+        const extraPrice = Number(this.dataset.extra);
+        select(groupKey, choiceName, extraPrice);
+      });
+    });
   }
 
   function select(groupKey, choiceName, extraPrice) {
