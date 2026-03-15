@@ -326,7 +326,7 @@ const KitchenDisplay = (() => {
             ${(order.items || []).map(item => `
               <div class="kitchen-item">
                 <div class="kitchen-item-qty">${item.quantity}</div>
-                <div class="kitchen-item-name">${item.menuName}</div>
+                <div class="kitchen-item-name">${item.menuName}${item.optionsSummary ? `<div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:2px;">⚙️ ${item.optionsSummary}</div>` : ''}</div>
               </div>
             `).join('')}
             ${order.note ? `
