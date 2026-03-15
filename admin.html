@@ -3,337 +3,394 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin - ระบบหลังร้าน</title>
+  <title>จอครัว - Kitchen Display</title>
   <link rel="stylesheet" href="css/style.css">
   <style>
-    body { max-width: 100%; background: var(--color-gray-100); }
-    .filter-bar {
-      display: flex; gap: 8px; padding: 12px 16px;
-      background: white; align-items: center;
-      border-bottom: 1px solid var(--color-gray-100);
-      flex-wrap: wrap;
+    body { background: #0F1117; max-width: 100%; }
+    .kitchen-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px; padding: 16px;
     }
-    .filter-date {
-      flex: 1; min-width: 140px;
-      border: 1.5px solid var(--color-gray-200, #E5E7EB);
-      border-radius: 8px; padding: 8px 10px;
-      font-family: var(--font-main); font-size: 14px;
-      color: var(--color-gray-900);
-    }
-    .btn-refresh {
-      background: var(--color-primary); color: white;
-      border: none; border-radius: 8px;
-      padding: 8px 16px; font-family: var(--font-main);
-      font-size: 14px; font-weight: 700; cursor: pointer;
-    }
-    .tab-bar {
-      display: flex; background: white;
-      border-bottom: 1px solid var(--color-gray-100);
-    }
-    .tab-btn-admin {
-      flex: 1; padding: 12px;
-      font-family: var(--font-main); font-size: 14px; font-weight: 600;
-      border: none; background: none; cursor: pointer;
-      color: var(--color-gray-500);
-      border-bottom: 2px solid transparent;
-    }
-    .tab-btn-admin.active { color: var(--color-primary); border-bottom-color: var(--color-primary); }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-
-    /* Menu toggle */
-    .menu-admin-item {
-      background: white; border-radius: 12px;
-      padding: 14px; display: flex; align-items: center; gap: 12px;
-      box-shadow: var(--shadow-card); margin-bottom: 8px;
-    }
-    .menu-admin-img {
-      width: 52px; height: 52px; border-radius: 8px;
-      object-fit: cover; background: var(--color-gray-100);
-      flex-shrink: 0; font-size: 26px;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .menu-admin-info { flex: 1; }
-    .menu-admin-name { font-weight: 700; font-size: 15px; }
-    .menu-admin-price { font-size: 13px; color: var(--color-primary-dark); font-weight: 600; }
-    .toggle-switch {
-      position: relative; width: 48px; height: 26px;
-      flex-shrink: 0;
-    }
-    .toggle-switch input { opacity: 0; width: 0; height: 0; }
-    .toggle-slider {
-      position: absolute; inset: 0;
-      background: var(--color-gray-300);
-      border-radius: 13px; cursor: pointer;
-      transition: .2s;
-    }
-    .toggle-slider::before {
-      content: ''; position: absolute;
-      height: 20px; width: 20px;
-      left: 3px; bottom: 3px;
-      background: white; border-radius: 50%;
-      transition: .2s; box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-    }
-    input:checked + .toggle-slider { background: var(--color-primary); }
-    input:checked + .toggle-slider::before { transform: translateX(22px); }
-
-    #admin-login {
-      position: fixed; inset: 0; background: white;
+    #kitchen-login {
+      position: fixed; inset: 0; background: #0F1117;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center; gap: 16px;
       z-index: 999; padding: 32px;
     }
+    .kitchen-login-input {
+      width: 100%; max-width: 300px; padding: 12px 16px;
+      border: 1.5px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px; font-family: var(--font-main);
+      font-size: 16px; color: white; outline: none;
+    }
+    .kitchen-login-input:focus { border-color: var(--color-primary); }
+    .btn-kitchen-login {
+      width: 100%; max-width: 300px; padding: 14px;
+      background: var(--color-primary); color: white;
+      border: none; border-radius: 12px; font-family: var(--font-main);
+      font-size: 16px; font-weight: 700; cursor: pointer;
+    }
+    .kitchen-filter {
+      display: flex; gap: 8px; padding: 12px 16px;
+      background: rgba(255,255,255,0.05);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      align-items: center;
+    }
+    .kfilter-btn {
+      padding: 6px 16px; border-radius: 999px;
+      font-family: var(--font-main); font-size: 13px; font-weight: 600;
+      cursor: pointer; border: 1.5px solid rgba(255,255,255,0.2);
+      background: transparent; color: rgba(255,255,255,0.6); transition: all 0.2s;
+    }
+    .kfilter-btn.active { background: var(--color-primary); border-color: var(--color-primary); color: white; }
+
+    /* ===== SOUND TOGGLE ===== */
+    .sound-toggle {
+      margin-left: auto;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .sound-btn {
+      width: 40px; height: 40px; border-radius: 50%;
+      border: 1.5px solid rgba(255,255,255,0.2);
+      background: transparent; color: white;
+      font-size: 18px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+    }
+    .sound-btn.on  { background: var(--color-primary); border-color: var(--color-primary); }
+    .sound-btn.off { background: rgba(239,68,68,0.3); border-color: #EF4444; }
+
+    /* ===== NEW ORDER FLASH ===== */
+    @keyframes newOrderFlash {
+      0%,100% { background: #1A1D2B; }
+      50%      { background: rgba(6,199,85,0.15); }
+    }
+    .kitchen-card.new-order {
+      animation: newOrder 0.5s ease-out, newOrderFlash 1s ease-in-out 3;
+    }
   </style>
 </head>
-<body>
+<body class="kitchen-page">
 
-<!-- Login Gate -->
-<div id="admin-login">
-  <div style="font-size:48px;">🔐</div>
-  <h1 style="font-size:22px; font-weight:800;">ระบบหลังร้าน</h1>
-  <input type="password" id="admin-key-input" placeholder="กรอก Admin Key"
-    style="
-      width:100%; max-width:300px; padding:12px 16px;
-      border:1.5px solid var(--color-gray-300); border-radius:12px;
-      font-family:var(--font-main); font-size:16px;
-    ">
-  <button onclick="AdminPage.login()" class="btn btn-primary" style="max-width:300px;">
-    เข้าสู่ระบบ
-  </button>
-  <div id="login-error" style="color:var(--color-danger);font-size:14px;display:none;">
-    Admin Key ไม่ถูกต้อง
-  </div>
+<!-- Login -->
+<div id="kitchen-login">
+  <div style="font-size:52px; margin-bottom:8px;">👨‍🍳</div>
+  <div style="font-size:22px; font-weight:800; color:white;">จอครัว</div>
+  <div style="font-size:14px; color:rgba(255,255,255,0.5); margin-bottom:8px;">กรอก Admin Key เพื่อเข้าใช้งาน</div>
+  <input type="password" class="kitchen-login-input" id="kitchen-key" placeholder="Admin Key">
+  <button class="btn-kitchen-login" onclick="KitchenDisplay.login()">เข้าสู่ระบบ</button>
+  <div id="kitchen-login-err" style="color:var(--color-danger);font-size:14px;display:none;">Admin Key ไม่ถูกต้อง</div>
 </div>
 
-<!-- Admin UI -->
-<div id="admin-ui" style="display:none;">
+<!-- Kitchen UI -->
+<div id="kitchen-ui" style="display:none;">
 
-  <!-- Header -->
-  <div class="admin-header">
-    <div class="admin-title">🏪 ระบบหลังร้าน</div>
-    <div class="admin-subtitle" id="admin-date">วันนี้</div>
+  <div class="kitchen-header">
+    <div>
+      <div class="kitchen-title">👨‍🍳 จอครัว</div>
+      <div style="font-size:12px; color:rgba(255,255,255,0.5); margin-top:2px;" id="order-count">กำลังโหลด...</div>
+    </div>
+    <div class="kitchen-clock" id="kitchen-clock">00:00</div>
   </div>
 
-  <!-- Stats -->
-  <div class="stats-grid" id="stats-grid">
-    <div class="stat-card">
-      <div class="stat-label">ออเดอร์วันนี้</div>
-      <div class="stat-value" id="stat-orders">–</div>
-      <div class="stat-unit">รายการ</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">ยอดขาย</div>
-      <div class="stat-value" id="stat-revenue">–</div>
-      <div class="stat-unit">บาท</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">กำลังทำ</div>
-      <div class="stat-value cooking" id="stat-cooking" style="color:var(--color-secondary)">–</div>
-      <div class="stat-unit">รายการ</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">เสร็จแล้ว</div>
-      <div class="stat-value" id="stat-done" style="color:var(--color-success)">–</div>
-      <div class="stat-unit">รายการ</div>
+  <div class="kitchen-filter">
+    <button class="kfilter-btn active" onclick="KitchenDisplay.setFilter('active', this)">🔥 กำลังทำ</button>
+    <button class="kfilter-btn" onclick="KitchenDisplay.setFilter('paid', this)">✅ ชำระแล้ว</button>
+    <button class="kfilter-btn" onclick="KitchenDisplay.setFilter('all', this)">📋 ทั้งหมด</button>
+    <button class="kfilter-btn" onclick="KitchenDisplay.refresh()">🔄</button>
+    <!-- Sound Toggle -->
+    <div class="sound-toggle">
+      <button class="sound-btn on" id="sound-btn" onclick="KitchenDisplay.toggleSound()" title="เสียงแจ้งเตือน">
+        🔔
+      </button>
     </div>
   </div>
 
-  <!-- Filter -->
-  <div class="filter-bar">
-    <input type="date" class="filter-date" id="filter-date">
-    <button class="btn-refresh" onclick="AdminPage.loadOrders()">🔄 โหลด</button>
-    <a href="kitchen.html" style="
-      background:var(--color-dark); color:white; border-radius:8px;
-      padding:8px 14px; font-size:14px; font-weight:700;
-    ">👨‍🍳 จอครัว</a>
-  </div>
-
-  <!-- Tabs -->
-  <div class="tab-bar">
-    <button class="tab-btn-admin active" onclick="AdminPage.switchTab('orders', this)">📋 ออเดอร์</button>
-    <button class="tab-btn-admin" onclick="AdminPage.switchTab('menu', this)">🍽️ เมนู</button>
-  </div>
-
-  <!-- Orders Tab -->
-  <div class="tab-content active" id="tab-orders">
-    <div class="orders-section" id="orders-list" style="padding-top:16px;">
-      <div class="text-center" style="padding:40px;"><div class="loading-spinner" style="margin:0 auto;"></div></div>
+  <div class="kitchen-grid" id="kitchen-grid">
+    <div class="kitchen-empty">
+      <div class="kitchen-empty-icon">✨</div>
+      <div class="kitchen-empty-text">ยังไม่มีออเดอร์</div>
     </div>
   </div>
-
-  <!-- Menu Tab -->
-  <div class="tab-content" id="tab-menu">
-    <div style="padding:16px;" id="menu-admin-list">
-      <div class="text-center" style="padding:40px;"><div class="loading-spinner" style="margin:0 auto;"></div></div>
-    </div>
-  </div>
-
 </div>
 
 <script src="js/cart.js"></script>
 <script src="js/api.js"></script>
 <script src="js/app.js"></script>
 <script>
-const AdminPage = (() => {
+const KitchenDisplay = (() => {
   let adminKey = '';
+  let allOrders = [];
+  let currentFilter = 'active';
+  let refreshTimer = null;
+  let soundEnabled = true;
+  let knownOrderIds = new Set(); // เก็บ ID ออเดอร์ที่เคยเห็นแล้ว
+  let audioCtx = null;
+  let isFirstLoad = true;
 
-  const STATUS_LABELS = {
-    pending: { label: 'รอยืนยัน', badge: 'badge-pending', next: 'cooking', nextLabel: '▶ เริ่มทำ' },
-    paid:    { label: 'ชำระแล้ว', badge: 'badge-paid',    next: 'cooking', nextLabel: '▶ เริ่มทำ' },
-    cooking: { label: 'กำลังทำ',  badge: 'badge-cooking', next: 'done',    nextLabel: '✅ เสร็จแล้ว' },
-    done:    { label: 'เสร็จแล้ว',badge: 'badge-done',    next: null,      nextLabel: '' },
-  };
+  // ===== SOUND ENGINE (Web Audio API — ไม่ต้องใช้ไฟล์เสียง) =====
+  function getAudioCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+  }
 
+  function playSound(type) {
+    if (!soundEnabled) return;
+    try {
+      const ctx = getAudioCtx();
+
+      if (type === 'newOrder') {
+        // เสียง "ติ้ง ติ้ง ติ้ง" 3 ครั้ง
+        [0, 0.25, 0.5].forEach(delay => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.frequency.value = 880;
+          osc.type = 'sine';
+          gain.gain.setValueAtTime(0, ctx.currentTime + delay);
+          gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + delay + 0.01);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.3);
+          osc.start(ctx.currentTime + delay);
+          osc.stop(ctx.currentTime + delay + 0.3);
+        });
+
+      } else if (type === 'urgent') {
+        // เสียงแจ้งเตือนเร่งด่วน — สูงต่ำสลับกัน
+        [0, 0.2, 0.4, 0.6].forEach((delay, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.frequency.value = i % 2 === 0 ? 1000 : 700;
+          osc.type = 'square';
+          gain.gain.setValueAtTime(0, ctx.currentTime + delay);
+          gain.gain.linearRampToValueAtTime(0.15, ctx.currentTime + delay + 0.01);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.18);
+          osc.start(ctx.currentTime + delay);
+          osc.stop(ctx.currentTime + delay + 0.18);
+        });
+
+      } else if (type === 'done') {
+        // เสียง "ป๊อป" เบาๆ เมื่อทำเสร็จ
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.setValueAtTime(600, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.2);
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.2);
+      }
+    } catch(e) {
+      console.warn('Sound error:', e);
+    }
+  }
+
+  function toggleSound() {
+    soundEnabled = !soundEnabled;
+    const btn = document.getElementById('sound-btn');
+    btn.textContent = soundEnabled ? '🔔' : '🔕';
+    btn.className = `sound-btn ${soundEnabled ? 'on' : 'off'}`;
+
+    // ทดสอบเสียงเมื่อเปิด
+    if (soundEnabled) playSound('newOrder');
+  }
+
+  // ===== CLOCK =====
+  function startClock() {
+    function tick() {
+      const el = document.getElementById('kitchen-clock');
+      if (el) el.textContent = new Date().toLocaleTimeString('th-TH', {
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+      });
+    }
+    tick();
+    setInterval(tick, 1000);
+  }
+
+  // ===== LOGIN =====
   function login() {
-    const key = document.getElementById('admin-key-input').value.trim();
+    const key = document.getElementById('kitchen-key').value.trim();
     if (!key) return;
     adminKey = key;
-    APP_CONFIG.ADMIN_KEY = key;
-
-    // Test with API
     API.getSalesReport(key).then(() => {
-      document.getElementById('admin-login').style.display = 'none';
-      document.getElementById('admin-ui').style.display = 'block';
-      loadAll();
+      document.getElementById('kitchen-login').style.display = 'none';
+      document.getElementById('kitchen-ui').style.display = 'block';
+      startClock();
+      loadOrders();
+      refreshTimer = setInterval(loadOrders, 20000);
     }).catch(() => {
-      document.getElementById('login-error').style.display = 'block';
+      document.getElementById('kitchen-login-err').style.display = 'block';
       adminKey = '';
     });
   }
 
-  function loadAll() {
-    // Set today's date
-    const today = new Date().toISOString().slice(0, 10);
-    document.getElementById('filter-date').value = today;
-    document.getElementById('admin-date').textContent = formatDate(today);
-
-    loadOrders();
-    loadMenu();
-  }
-
+  // ===== LOAD ORDERS =====
   async function loadOrders() {
-    const dateEl = document.getElementById('filter-date');
-    const date = dateEl.value;
-    const container = document.getElementById('orders-list');
-    container.innerHTML = `<div class="text-center" style="padding:40px;"><div class="loading-spinner" style="margin:0 auto;"></div></div>`;
-
     try {
-      const result = await API.getOrders(adminKey, date);
-      const { orders, stats } = result;
+      const result = await API.getOrders(adminKey, '');
+      const newOrders = result.orders || [];
 
-      // Update stats
-      document.getElementById('stat-orders').textContent = stats.totalOrders;
-      document.getElementById('stat-revenue').textContent = Math.round(stats.totalRevenue).toLocaleString('th-TH');
-      document.getElementById('stat-cooking').textContent = orders.filter(o => o.status === 'cooking').length;
-      document.getElementById('stat-done').textContent = orders.filter(o => o.status === 'done').length;
+      // ตรวจหาออเดอร์ใหม่ที่เพิ่งเข้ามา
+      if (!isFirstLoad) {
+        const newActiveOrders = newOrders.filter(o =>
+          (o.status === 'paid' || o.status === 'cooking') &&
+          !knownOrderIds.has(o.orderId)
+        );
 
-      if (orders.length === 0) {
-        container.innerHTML = `<div class="text-center" style="padding:60px; color:var(--color-gray-500);">ไม่มีออเดอร์วันนี้</div>`;
-        return;
+        if (newActiveOrders.length > 0) {
+          // มีออเดอร์ใหม่ — เล่นเสียงและ highlight
+          playSound('newOrder');
+          newActiveOrders.forEach(o => {
+            // จะ highlight card หลัง render
+            setTimeout(() => {
+              const card = document.getElementById('kcard-' + o.orderId);
+              if (card) card.classList.add('new-order');
+            }, 100);
+          });
+        }
       }
 
-      container.innerHTML = orders.map(o => {
-        const s = STATUS_LABELS[o.status] || STATUS_LABELS.pending;
-        const items = (o.items || []).map(i => `${i.menuName} × ${i.quantity}`).join(', ');
-        return `
-          <div class="order-card status-${o.status}" id="oc-${o.orderId}">
-            <div class="order-card-header">
-              <div>
-                <div class="order-card-id">#${o.orderId}</div>
-                <div class="order-card-time">${formatTime(o.createdAt)} · ${o.customerName}</div>
-              </div>
-              <span class="status-badge ${s.badge}">${s.label}</span>
-            </div>
-            <div class="order-card-body">
-              <div class="order-card-items">${items}</div>
-              ${o.note ? `<div style="font-size:12px;color:var(--color-gray-500);margin-top:4px;">📝 ${o.note}</div>` : ''}
-              <div class="order-card-total">${formatPrice(o.totalPrice)}
-                <span style="font-size:12px;font-weight:400;color:${o.paymentStatus==='paid'?'var(--color-success)':'var(--color-warning)'}">
-                  · ${o.paymentStatus === 'paid' ? '✅ ชำระแล้ว' : '⏳ รอชำระ'}
-                </span>
-              </div>
-            </div>
-            <div class="order-card-footer">
-              ${s.next ? `<button class="btn-sm btn-sm-primary" onclick="AdminPage.updateStatus('${o.orderId}','${s.next}')">${s.nextLabel}</button>` : ''}
-              <button class="btn-sm btn-sm-outline" onclick="AdminPage.loadOrders()">🔄</button>
-            </div>
-          </div>
-        `;
-      }).join('');
+      // ตรวจหาออเดอร์เร่งด่วน (รอเกิน 15 นาที)
+      const urgentOrders = newOrders.filter(o => {
+        const ageMin = Math.floor((Date.now() - new Date(o.createdAt)) / 60000);
+        return ageMin >= 15 && (o.status === 'paid' || o.status === 'cooking');
+      });
+      if (!isFirstLoad && urgentOrders.length > 0) {
+        playSound('urgent');
+      }
 
-    } catch(err) {
-      container.innerHTML = `<div class="text-center" style="padding:40px; color:var(--color-danger);">โหลดไม่สำเร็จ: ${err.message}</div>`;
+      // อัปเดต known IDs
+      newOrders.forEach(o => knownOrderIds.add(o.orderId));
+      allOrders = newOrders;
+      isFirstLoad = false;
+      renderOrders();
+
+    } catch (err) {
+      console.error('Load orders error:', err);
     }
   }
 
-  async function loadMenu() {
-    const container = document.getElementById('menu-admin-list');
-    try {
-      const result = await API.getMenu(true);
-      const items = result.items || [];
-      container.innerHTML = items.map(item => `
-        <div class="menu-admin-item">
-          <div class="menu-admin-img">
-            ${item.image_url
-              ? `<img src="${item.image_url}" alt="${item.name}" style="width:52px;height:52px;object-fit:cover;border-radius:8px;">`
-              : '🍽️'}
-          </div>
-          <div class="menu-admin-info">
-            <div class="menu-admin-name">${item.name}</div>
-            <div class="menu-admin-price">${formatPrice(item.price)}</div>
-          </div>
-          <label class="toggle-switch">
-            <input type="checkbox" ${item.status === 'active' ? 'checked' : ''}
-              onchange="AdminPage.toggleMenu('${item.id}', this.checked)">
-            <span class="toggle-slider"></span>
-          </label>
+  // ===== RENDER =====
+  function renderOrders() {
+    const grid = document.getElementById('kitchen-grid');
+    const countEl = document.getElementById('order-count');
+
+    let filtered;
+    if (currentFilter === 'active') {
+      filtered = allOrders.filter(o => o.status === 'cooking' || o.status === 'paid');
+    } else if (currentFilter === 'paid') {
+      filtered = allOrders.filter(o => o.status === 'paid');
+    } else {
+      filtered = allOrders.filter(o => o.status !== 'done');
+    }
+
+    filtered.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+    const cookingCount = allOrders.filter(o => o.status === 'cooking').length;
+    const waitCount = allOrders.filter(o => o.status === 'paid').length;
+    countEl.textContent = `🔥 กำลังทำ: ${cookingCount} · ⏳ รอทำ: ${waitCount}`;
+
+    if (filtered.length === 0) {
+      grid.innerHTML = `
+        <div class="kitchen-empty" style="grid-column:1/-1;">
+          <div class="kitchen-empty-icon">✨</div>
+          <div class="kitchen-empty-text">ไม่มีออเดอร์ที่ต้องทำ</div>
+          <div style="font-size:14px; color:rgba(255,255,255,0.3); margin-top:8px;">รีเฟรชทุก 20 วินาที</div>
         </div>
-      `).join('');
-    } catch(err) {
-      container.innerHTML = `<div style="color:var(--color-danger);">โหลดเมนูไม่สำเร็จ</div>`;
+      `;
+      return;
     }
+
+    grid.innerHTML = filtered.map(order => {
+      const ageMin = Math.floor((Date.now() - new Date(order.createdAt)) / 60000);
+      const isUrgent = ageMin >= 15;
+      return `
+        <div class="kitchen-card ${isUrgent ? 'urgent' : ''}" id="kcard-${order.orderId}">
+          <div class="kitchen-card-header">
+            <div>
+              <div class="kitchen-order-id">#${order.orderId}</div>
+              <div class="kitchen-order-time">${order.customerName} · ${ageMin} นาที ${isUrgent ? '⚠️' : ''}</div>
+            </div>
+            <span class="status-badge ${order.status === 'cooking' ? 'badge-cooking' : 'badge-paid'}">
+              ${order.status === 'cooking' ? '🔥 กำลังทำ' : '✅ ชำระแล้ว'}
+            </span>
+          </div>
+          <div class="kitchen-card-body">
+            ${(order.items || []).map(item => `
+              <div class="kitchen-item">
+                <div class="kitchen-item-qty">${item.quantity}</div>
+                <div class="kitchen-item-name">${item.menuName}</div>
+              </div>
+            `).join('')}
+            ${order.note ? `
+              <div style="margin-top:10px; padding:8px; background:rgba(255,255,255,0.06); border-radius:8px; font-size:13px; color:rgba(255,255,255,0.7);">
+                📝 ${order.note}
+              </div>` : ''}
+          </div>
+          <div class="kitchen-card-footer" style="display:flex; gap:8px;">
+            ${order.status === 'paid' ? `
+              <button onclick="KitchenDisplay.startCooking('${order.orderId}')"
+                style="flex:1; padding:10px; background:rgba(255,107,53,0.8); color:white; border:none; border-radius:8px; font-family:var(--font-main); font-size:14px; font-weight:700; cursor:pointer;">
+                🔥 เริ่มทำ
+              </button>` : ''}
+            <button class="btn-done" style="${order.status === 'paid' ? 'flex:1;' : ''}"
+              onclick="KitchenDisplay.markDone('${order.orderId}')">
+              ✅ เสร็จแล้ว
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
   }
 
-  async function updateStatus(orderId, status) {
+  // ===== ACTIONS =====
+  async function startCooking(orderId) {
     try {
-      await API.updateOrderStatus(adminKey, orderId, status);
-      Toast.success('อัปเดตสถานะแล้ว');
-      loadOrders();
-    } catch(err) {
-      Toast.error('เกิดข้อผิดพลาด: ' + err.message);
-    }
+      await API.updateOrderStatus(adminKey, orderId, 'cooking');
+      await loadOrders();
+    } catch(err) { alert('เกิดข้อผิดพลาด: ' + err.message); }
   }
 
-  async function toggleMenu(menuId, isActive) {
+  async function markDone(orderId) {
+    const card = document.getElementById('kcard-' + orderId);
+    if (card) { card.style.opacity = '0.5'; card.style.transform = 'scale(0.96)'; }
     try {
-      const status = isActive ? 'active' : 'inactive';
-      await API.updateMenuStatus(adminKey, menuId, status);
-      Toast.success(isActive ? 'เปิดใช้งานเมนูแล้ว' : 'ปิดเมนูแล้ว');
+      await API.updateOrderStatus(adminKey, orderId, 'done');
+      playSound('done'); // เสียงเมื่อทำเสร็จ
+      await loadOrders();
     } catch(err) {
-      Toast.error('เกิดข้อผิดพลาด');
-      loadMenu(); // revert
+      if (card) { card.style.opacity = '1'; card.style.transform = ''; }
+      alert('เกิดข้อผิดพลาด: ' + err.message);
     }
   }
 
-  function switchTab(tab, btn) {
-    document.querySelectorAll('.tab-btn-admin').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  function setFilter(filter, btn) {
+    currentFilter = filter;
+    document.querySelectorAll('.kfilter-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    document.getElementById('tab-' + tab).classList.add('active');
+    renderOrders();
   }
 
-  // Auto-refresh orders every 60s
-  setInterval(() => {
-    if (adminKey) loadOrders();
-  }, 60000);
+  function refresh() { loadOrders(); }
 
   document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('admin-key-input').addEventListener('keydown', e => {
+    document.getElementById('kitchen-key').addEventListener('keydown', e => {
       if (e.key === 'Enter') login();
     });
+    // Unlock AudioContext on first user interaction
+    document.addEventListener('click', () => {
+      if (!audioCtx) getAudioCtx();
+    }, { once: true });
   });
 
-  return { login, loadOrders, loadMenu, updateStatus, toggleMenu, switchTab };
+  return { login, loadOrders, startCooking, markDone, setFilter, refresh, toggleSound };
 })();
 </script>
 </body>
