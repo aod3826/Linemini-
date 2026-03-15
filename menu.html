@@ -155,9 +155,10 @@
       <div class="options-item-name" id="options-item-name">ชื่อเมนู</div>
       <div class="options-base-price">ราคาเริ่มต้น: <span id="options-base-price"></span></div>
     </div>
-    <div id="options-groups"></div>
+    <div id="options-groups" style="padding-bottom:16px;"></div>
     <div class="options-footer">
-      <button id="options-confirm-btn" onclick="OptionsPopup.confirm()">เพิ่มใส่ตะกร้า</button>
+      <!-- ✅ ไม่ใช้ onclick attribute — bind ผ่าน addEventListener ใน JS แทน -->
+      <button id="options-confirm-btn">เพิ่มใส่ตะกร้า</button>
     </div>
   </div>
 </div>
@@ -184,10 +185,19 @@
 <script src="js/app.js"></script>
 <script src="js/menu.js"></script>
 <script>
-  // ปิด popup เมื่อกด overlay
-  OptionsPopup.closeOnOverlay = function(e) {
-    if (e.target === document.getElementById('options-overlay')) OptionsPopup.close();
-  };
+  document.addEventListener('DOMContentLoaded', function() {
+    // ✅ bind confirm button ผ่าน addEventListener
+    document.getElementById('options-confirm-btn')
+      .addEventListener('click', function() {
+        OptionsPopup.confirm();
+      });
+
+    // ปิด popup เมื่อกด overlay
+    document.getElementById('options-overlay')
+      .addEventListener('click', function(e) {
+        if (e.target === this) OptionsPopup.close();
+      });
+  });
 </script>
 </body>
 </html>
