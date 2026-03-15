@@ -265,7 +265,7 @@ const AdminPage = (() => {
 
       container.innerHTML = orders.map(o => {
         const s = STATUS_LABELS[o.status] || STATUS_LABELS.pending;
-        const items = (o.items || []).map(i => `${i.menuName} × ${i.quantity}`).join(', ');
+        const items = (o.items || []).map(i => { const opt = i.optionsSummary ? ` (⚙️ ${i.optionsSummary})` : ''; return `${i.menuName} × ${i.quantity}${opt}`; }).join('<br>');
         const isCancelled = o.status === 'cancelled';
         const isDone = o.status === 'done';
 
