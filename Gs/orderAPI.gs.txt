@@ -1,10 +1,10 @@
 /**
- * orderAPI.gs - Order Management (with Options + Notifications)
+ * orderAPI.gs - Order Management (with Options + Notifications + Delivery)
  */
 
 function createOrder(body) {
-  const { userId, customerName, items, note } = body;
-
+  const { userId, customerName, items, note, paymentMethod, deliveryType, deliveryLat, deliveryLng, deliveryAddress, deliveryDistanceKm, deliveryFee } = body;
+  
   if (!userId) throw new Error('userId is required');
   if (!items || !Array.isArray(items) || items.length === 0)
     throw new Error('items array is required');
@@ -28,7 +28,7 @@ function createOrder(body) {
 
     const unitPrice = basePrice + extraPrice;
     totalPrice += unitPrice * qty;
-
+    
     validatedItems.push({
       menuId:          String(menuItem.id),
       menuName:        menuItem.name,
@@ -40,17 +40,37 @@ function createOrder(body) {
       selectedOptions: item.selectedOptions || [],
     });
   }
+  
+  // เพิ่มค่าจัดส่งถ้ามี
+  const finalTotal = totalPrice + (deliveryFee ? Number(deliveryFee) : 0);
 
   const orderId = generateOrderId();
   const now = new Date();
 
-  // บันทึก Orders
+  // บันทึก Orders - เพิ่มฟิลด์จัดส่ง
   const ordersSheet = getSheet('Orders');
-  ordersSheet.appendRow([
+  let orderRow = [
     orderId, userId, customerName || 'Guest',
-    totalPrice, 'pending', 'unpaid',
+    finalTotal, 'pending', 'unpaid',
     now.toISOString(), note || '',
-  ]);
+  ];
+  
+  // เพิ่มข้อมูลจัดส่งถ้าเป็น delivery
+  if (deliveryType === 'delivery') {
+    orderRow.push(deliveryLat || '');
+    orderRow.push(deliveryLng || '');
+    orderRow.push(deliveryAddress || '');
+    orderRow.push(deliveryDistanceKm || 0);
+    orderRow.push(deliveryFee || 0);
+  } else {
+    orderRow.push('pickup'); // lat
+    orderRow.push(''); // lng
+    orderRow.push(''); // address
+    orderRow.push(0); // distance
+    orderRow.push(0); // fee
+  }
+  
+  ordersSheet.appendRow(orderRow);
 
   // บันทึก OrderItems
   const itemsSheet = getSheet('OrderItems');
@@ -62,21 +82,23 @@ function createOrder(body) {
   }
 
   upsertCustomer(userId, customerName, now);
-  logInfo('createOrder', `Order ${orderId} created for ${userId}`);
+  logInfo('createOrder', `Order ${orderId} created for ${userId}, type: ${deliveryType || 'pickup'}`);
 
   // ✅ แจ้งกลุ่มครัวทันทีถ้าเป็นเงินสด (LINE Pay จะแจ้งหลังชำระสำเร็จ)
-  const paymentMethod = body.paymentMethod || '';
-  if (paymentMethod !== 'linepay') {
+  const pm = paymentMethod || '';
+  if (pm !== 'linepay') {
     notifyRestaurant(orderId, {
       customerName: customerName || 'Guest',
-      totalPrice,
-      paymentMethod,
+      totalPrice: finalTotal,
+      paymentMethod: pm,
       note: note || '',
       items: validatedItems,
+      deliveryType: deliveryType || 'pickup',
+      deliveryLat, deliveryLng, deliveryAddress, deliveryDistanceKm, deliveryFee
     });
   }
 
-  return { success: true, orderId, totalPrice };
+  return { success: true, orderId, totalPrice: finalTotal };
 }
 
 function getOrder(orderId) {
@@ -99,6 +121,12 @@ function getOrder(orderId) {
         paymentStatus: row.payment_status,
         createdAt:     row.created_at,
         note:          row.note || '',
+        deliveryType:  row.delivery_type || 'pickup',
+        deliveryLat:   row.delivery_lat,
+        deliveryLng:   row.delivery_lng,
+        deliveryAddress: row.delivery_address,
+        deliveryDistanceKm: row.delivery_distance_km,
+        deliveryFee:   row.delivery_fee,
       };
       break;
     }
@@ -149,6 +177,12 @@ function getOrdersAdmin(adminKey, date) {
         createdAt:     row.created_at,
         note:          row.note || '',
         cancelReason:  row.cancel_reason || '',
+        deliveryType:  row.delivery_type || 'pickup',
+        deliveryLat:   row.delivery_lat,
+        deliveryLng:   row.delivery_lng,
+        deliveryAddress: row.delivery_address,
+        deliveryDistanceKm: row.delivery_distance_km,
+        deliveryFee:   row.delivery_fee,
       });
     }
   }
