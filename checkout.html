@@ -265,11 +265,11 @@ const CheckoutPage = (() => {
   let lastTotal = 0;
   let isSubmitting = false;
 
-  // ค่าจัดส่ง: 15 บาท/กม. เริ่มต้นที่ 0 กม. first 2km ฟรี
-  const DELIVERY_RATE_PER_KM = 15;
-  const FREE_DISTANCE_KM = 2;
-  const RESTAURANT_LAT = 13.7563; // ตั้งค่าพิกัดร้านที่นี่ (กรุงเทพฯ)
-  const RESTAURANT_LNG = 100.5018;
+ // ค่าจัดส่ง: 15 บาท/กม. เริ่มต้นที่ 0 กม. first 2km ฟรี
+const DELIVERY_RATE_PER_KM = 15;
+const FREE_DISTANCE_KM = 2;
+const RESTAURANT_LAT = 7.6224; // พิกัดร้านของอ๊อด (ละติจูด)
+const RESTAURANT_LNG = 99.9995; // พิกัดร้านของอ๊อด (ลองจิจูด)
 
   // ===== RENDER =====
   function render() {
