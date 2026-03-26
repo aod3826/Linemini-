@@ -115,6 +115,59 @@
       </div>
     </div>
 
+    <!-- วิธีรับอาหาร -->
+    <div class="checkout-section">
+      <div class="checkout-section-title">วิธีรับอาหาร</div>
+      <div class="payment-options">
+        <div class="payment-option selected" id="opt-pickup"
+          onclick="CheckoutPage.selectDelivery('pickup')">
+          <div class="payment-option-icon" style="background:#3B82F6;">🏪</div>
+          <div class="payment-option-info">
+            <div class="payment-option-name">มารับที่ร้าน</div>
+            <div class="payment-option-desc">รับอาหารด้วยตัวเองที่ร้าน</div>
+          </div>
+          <div class="payment-radio" id="radio-pickup"></div>
+        </div>
+        <div class="payment-option" id="opt-delivery"
+          onclick="CheckoutPage.selectDelivery('delivery')">
+          <div class="payment-option-icon" style="background:#F59E0B;">🛵</div>
+          <div class="payment-option-info">
+            <div class="payment-option-name">จัดส่งถึงที่</div>
+            <div class="payment-option-desc">จัดส่งถึงบ้านคุณ (มีค่าบริการ)</div>
+          </div>
+          <div class="payment-radio" id="radio-delivery"></div>
+        </div>
+      </div>
+      
+      <!-- GPS Delivery Form -->
+      <div id="delivery-form" style="display:none; margin-top:16px; background:#FEF3C7; border-radius:12px; padding:16px;">
+        <div style="font-weight:700; font-size:14px; margin-bottom:12px; color:#92400E;">
+          📍 ระบุตำแหน่งจัดส่ง
+        </div>
+        
+        <button class="btn btn-primary" id="get-location-btn" onclick="CheckoutPage.getLocation()"
+          style="width:100%; margin-bottom:12px; background:linear-gradient(135deg,#F59E0B,#D97706);">
+          📡 ดึงตำแหน่งปัจจุบัน (GPS)
+        </button>
+        
+        <div id="location-status" style="font-size:13px; color:#92400E; margin-bottom:12px; display:none;"></div>
+        
+        <div style="display:flex; gap:8px; margin-bottom:12px;">
+          <input type="text" id="delivery-lat" placeholder="ละติจูด" readonly
+            style="flex:1; padding:10px; border:1.5px solid #D97706; border-radius:8px; font-size:14px; background:white;">
+          <input type="text" id="delivery-lng" placeholder="ลองจิจูด" readonly
+            style="flex:1; padding:10px; border:1.5px solid #D97706; border-radius:8px; font-size:14px; background:white;">
+        </div>
+        
+        <input type="text" id="delivery-address" placeholder="ที่อยู่เพิ่มเติม (เช่น บ้านเลขที่, ซอย...)"
+          style="width:100%; padding:10px; border:1.5px solid #D97706; border-radius:8px; font-size:14px; margin-bottom:8px;">
+        
+        <div id="delivery-fee-display" style="font-size:13px; color:#92400E; font-weight:600; display:none;">
+          💰 ค่าจัดส่ง: <span id="delivery-fee-amount">฿0</span> (<span id="delivery-distance">0</span> กม.)
+        </div>
+      </div>
+    </div>
+
     <!-- วิธีชำระเงิน -->
     <div class="checkout-section">
       <div class="checkout-section-title">เลือกวิธีชำระเงิน</div>
@@ -206,9 +259,17 @@
 <script>
 const CheckoutPage = (() => {
   let selectedPayment = 'linepay';
+  let selectedDelivery = 'pickup'; // 'pickup' หรือ 'delivery'
+  let deliveryData = null; // { lat, lng, address, distanceKm, fee }
   let lastOrderId = null;
   let lastTotal = 0;
-  let isSubmitting = false; // ✅ ป้องกันกดซ้ำ
+  let isSubmitting = false;
+
+  // ค่าจัดส่ง: 15 บาท/กม. เริ่มต้นที่ 0 กม. first 2km ฟรี
+  const DELIVERY_RATE_PER_KM = 15;
+  const FREE_DISTANCE_KM = 2;
+  const RESTAURANT_LAT = 13.7563; // ตั้งค่าพิกัดร้านที่นี่ (กรุงเทพฯ)
+  const RESTAURANT_LNG = 100.5018;
 
   // ===== RENDER =====
   function render() {
@@ -227,8 +288,29 @@ const CheckoutPage = (() => {
       </div>
     `).join('<hr class="divider">');
 
-    document.getElementById('subtotal-val').textContent = formatPrice(total);
-    document.getElementById('total-val').textContent = formatPrice(total);
+    const subtotal = total;
+    const deliveryFee = deliveryData ? deliveryData.fee : 0;
+    const grandTotal = subtotal + deliveryFee;
+
+    document.getElementById('subtotal-val').textContent = formatPrice(subtotal);
+    document.getElementById('total-val').textContent = formatPrice(grandTotal);
+    
+    if (deliveryFee > 0) {
+      // เพิ่มแถวค่าจัดส่ง
+      const priceBreakdown = document.querySelector('.price-breakdown');
+      let deliveryRow = priceBreakdown.querySelector('.delivery-row');
+      if (!deliveryRow) {
+        deliveryRow = document.createElement('div');
+        deliveryRow.className = 'price-row delivery-row';
+        priceBreakdown.insertBefore(deliveryRow, priceBreakdown.querySelector('.total'));
+      }
+      deliveryRow.innerHTML = `<span>ค่าจัดส่ง</span><span>${formatPrice(deliveryFee)}</span>`;
+      deliveryRow.style.display = 'flex';
+    } else {
+      const deliveryRow = document.querySelector('.delivery-row');
+      if (deliveryRow) deliveryRow.style.display = 'none';
+    }
+
     const note = localStorage.getItem('order_note') || '';
     document.getElementById('note-display').textContent = note || 'ไม่มีหมายเหตุ';
   }
@@ -256,7 +338,7 @@ const CheckoutPage = (() => {
 
   // ===== SELECT PAYMENT =====
   function selectPayment(method) {
-    if (isSubmitting) return; // ✅ ป้องกันเปลี่ยนระหว่าง submit
+    if (isSubmitting) return;
     selectedPayment = method;
     document.getElementById('opt-linepay').classList.toggle('selected', method === 'linepay');
     document.getElementById('opt-cash').classList.toggle('selected', method === 'cash');
@@ -272,9 +354,114 @@ const CheckoutPage = (() => {
     }
   }
 
+  // ===== SELECT DELIVERY =====
+  function selectDelivery(type) {
+    if (isSubmitting) return;
+    selectedDelivery = type;
+    document.getElementById('opt-pickup').classList.toggle('selected', type === 'pickup');
+    document.getElementById('opt-delivery').classList.toggle('selected', type === 'delivery');
+    
+    const form = document.getElementById('delivery-form');
+    if (type === 'delivery') {
+      form.style.display = 'block';
+    } else {
+      form.style.display = 'none';
+      deliveryData = null;
+      render();
+    }
+  }
+
+  // ===== GET LOCATION =====
+  async function getLocation() {
+    const statusEl = document.getElementById('location-status');
+    const latInput = document.getElementById('delivery-lat');
+    const lngInput = document.getElementById('delivery-lng');
+    const feeDisplay = document.getElementById('delivery-fee-display');
+    
+    if (!navigator.geolocation) {
+      statusEl.textContent = '❌ เบราว์เซอร์ไม่รองรับ GPS';
+      statusEl.style.display = 'block';
+      return;
+    }
+
+    statusEl.textContent = '📡 กำลังดึงตำแหน่ง...';
+    statusEl.style.display = 'block';
+    feeDisplay.style.display = 'none';
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        
+        latInput.value = lat.toFixed(6);
+        lngInput.value = lng.toFixed(6);
+        
+        // คำนวณระยะทางและค่าจัดส่ง
+        const distanceKm = calculateDistance(RESTAURANT_LAT, RESTAURANT_LNG, lat, lng);
+        const fee = calculateDeliveryFee(distanceKm);
+        
+        deliveryData = {
+          lat,
+          lng,
+          address: document.getElementById('delivery-address').value || '',
+          distanceKm: Math.round(distanceKm * 100) / 100,
+          fee
+        };
+        
+        statusEl.textContent = `✅ ได้ตำแหน่งแล้ว! ห่างออกไป ${deliveryData.distanceKm} กม.`;
+        statusEl.style.color = '#048A3A';
+        
+        document.getElementById('delivery-distance').textContent = deliveryData.distanceKm;
+        document.getElementById('delivery-fee-amount').textContent = formatPrice(fee);
+        feeDisplay.style.display = 'block';
+        
+        render();
+      },
+      (error) => {
+        console.error('Geolocation error:', error);
+        let msg = '❌ ไม่สามารถดึงตำแหน่งได้';
+        if (error.code === 1) msg = '❌ คุณปฏิเสธการเข้าถึงตำแหน่ง';
+        else if (error.code === 2) msg = '❌ ตำแหน่งไม่พร้อมใช้งาน';
+        else if (error.code === 3) msg = '❌ หมดเวลาในการดึงตำแหน่ง';
+        statusEl.textContent = msg;
+        statusEl.style.color = '#C0392B';
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
+    );
+  }
+
+  // ===== CALCULATE DISTANCE (Haversine Formula) =====
+  function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // รัศมีโลก (km)
+    const dLat = deg2rad(lat2 - lat1);
+    const dLon = deg2rad(lon2 - lon1);
+    const a =
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  }
+
+  function deg2rad(deg) {
+    return deg * (Math.PI/180);
+  }
+
+  // ===== CALCULATE DELIVERY FEE =====
+  function calculateDeliveryFee(distanceKm) {
+    if (distanceKm <= FREE_DISTANCE_KM) return 0;
+    return Math.round((distanceKm - FREE_DISTANCE_KM) * DELIVERY_RATE_PER_KM);
+  }
+
   // ===== CONFIRM =====
   async function confirm() {
-    // ✅ ป้องกันกดซ้ำทุกกรณี
+    // ตรวจสอบถ้าเลือกจัดส่ง ต้องมีตำแหน่ง
+    if (selectedDelivery === 'delivery' && !deliveryData) {
+      Toast.error('กรุณาระบุตำแหน่งจัดส่งก่อนสั่งอาหาร');
+      isSubmitting = false;
+      return;
+    }
+
     if (isSubmitting) return;
     isSubmitting = true;
 
@@ -290,6 +477,16 @@ const CheckoutPage = (() => {
       const orderPayload = Cart.toOrderPayload(LiffManager.getUserId(), name);
       orderPayload.note = localStorage.getItem('order_note') || '';
       orderPayload.paymentMethod = selectedPayment;
+      orderPayload.deliveryType = selectedDelivery;
+      
+      // เพิ่มข้อมูลจัดส่งถ้าเลือก delivery
+      if (selectedDelivery === 'delivery' && deliveryData) {
+        orderPayload.deliveryLat = deliveryData.lat;
+        orderPayload.deliveryLng = deliveryData.lng;
+        orderPayload.deliveryAddress = deliveryData.address;
+        orderPayload.deliveryDistanceKm = deliveryData.distanceKm;
+        orderPayload.deliveryFee = deliveryData.fee;
+      }
 
       // สร้างออเดอร์
       const orderResult = await API.createOrder(orderPayload);
@@ -302,7 +499,6 @@ const CheckoutPage = (() => {
         if (paymentResult.paymentUrl) {
           Cart.clear();
           localStorage.removeItem('order_note');
-          // ✅ redirect ออกไปเลย ไม่ต้อง reset isSubmitting
           window.location.href = paymentResult.paymentUrl;
         } else {
           throw new Error('ไม่สามารถสร้าง payment URL ได้');
@@ -315,8 +511,11 @@ const CheckoutPage = (() => {
         localStorage.setItem('last_order_id', orderId);
         document.getElementById('processing-modal').classList.remove('show');
         document.getElementById('cash-order-id').textContent = '#' + orderId;
-        document.getElementById('cash-order-total').textContent = formatPrice(lastTotal);
-        // ✅ แสดงชื่อผู้สั่งใน popup ด้วย
+        
+        // รวมค่าจัดส่งในยอดเงินที่แสดง
+        const grandTotal = lastTotal + (deliveryData ? deliveryData.fee : 0);
+        document.getElementById('cash-order-total').textContent = formatPrice(grandTotal);
+        
         document.getElementById('cash-customer-name').textContent =
           `สั่งโดย: ${name || 'Guest'}`;
         document.getElementById('cash-success-modal').classList.add('show');
@@ -326,12 +525,10 @@ const CheckoutPage = (() => {
       console.error('Checkout error:', err);
       document.getElementById('processing-modal').classList.remove('show');
 
-      // ✅ reset ทุกอย่างเมื่อ error
       isSubmitting = false;
       btn.classList.remove('btn-submitting');
       btn.disabled = false;
 
-      // แสดง error ที่เข้าใจง่าย
       let errMsg = 'กรุณาลองใหม่อีกครั้ง';
       if (err.message && err.message.includes('LINE Pay')) {
         errMsg = 'LINE Pay ยังไม่พร้อมใช้งาน กรุณาเลือกชำระเงินสดแทน';
@@ -352,7 +549,7 @@ const CheckoutPage = (() => {
     loadCustomerInfo();
   });
 
-  return { confirm, selectPayment, closeCashSuccess };
+  return { confirm, selectPayment, selectDelivery, getLocation, closeCashSuccess };
 })();
 </script>
 </body>
