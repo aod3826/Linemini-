@@ -66,7 +66,6 @@
       padding: 0 0 28px;
     }
 
-    /* พื้นหลัง — ลวดลายชาม pattern */
     .hero-bg {
       position: absolute; inset: 0;
       background:
@@ -75,7 +74,6 @@
         linear-gradient(160deg, #2C1200 0%, #1A0A00 50%, #0D0500 100%);
     }
 
-    /* ลวดลายวงกลมประดับ */
     .hero-decor {
       position: absolute; inset: 0; overflow: hidden; pointer-events: none;
     }
@@ -97,7 +95,6 @@
       border: 1.5px solid rgba(212,134,10,0.1);
     }
 
-    /* steam animation */
     .steam-wrap {
       position: absolute; top: 28px; left: 50%; transform: translateX(-50%);
       display: flex; gap: 8px; align-items: flex-end;
@@ -116,7 +113,6 @@
       100% { opacity: 0; transform: translateY(-28px) scaleX(1.4); }
     }
 
-    /* bowl icon */
     .hero-bowl {
       position: absolute; top: 16px; left: 50%;
       transform: translateX(-50%);
@@ -129,7 +125,6 @@
       50%     { transform: translateX(-50%) translateY(-8px); }
     }
 
-    /* divider เส้นทอง */
     .hero-divider {
       width: 48px; height: 2px;
       background: linear-gradient(90deg, transparent, var(--amber-lt), transparent);
@@ -249,7 +244,6 @@
     }
     .promo-btn:active { background: rgba(255,255,255,0.28); }
 
-    /* ===== SECTION TITLE ===== */
     .sec-title {
       font-family: var(--font-serif);
       font-size: 16px; font-weight: 700;
@@ -263,7 +257,6 @@
       background: linear-gradient(90deg, rgba(212,134,10,0.3), transparent);
     }
 
-    /* ===== QUICK MENU GRID ===== */
     .quick-grid {
       display: grid; grid-template-columns: 1fr 1fr;
       gap: 12px; margin-bottom: 18px;
@@ -298,7 +291,7 @@
       font-size: 12px; color: var(--amber);
     }
 
-    /* ===== INFO CARD ===== */
+    /* ===== INFO CARD (EDITED) ===== */
     .info-card {
       background: white; border-radius: 16px; padding: 16px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.07);
@@ -308,7 +301,11 @@
       display: flex; align-items: flex-start; gap: 12px;
       padding: 10px 0;
       border-bottom: 1px solid rgba(212,134,10,0.08);
+      text-decoration: none; /* ลบเส้นใต้จากลิงก์ */
+      transition: background 0.2s;
+      border-radius: 8px;
     }
+    .info-row:active { background: rgba(212,134,10,0.05); } /* เอฟเฟกต์ตอนกด */
     .info-row:last-child { border-bottom: none; padding-bottom: 0; }
     .info-icon {
       width: 36px; height: 36px; border-radius: 10px;
@@ -319,7 +316,6 @@
     .info-text-label { font-size: 11px; color: #999; margin-bottom: 1px; }
     .info-text-value { font-size: 13px; font-weight: 600; color: var(--brown-dk); }
 
-    /* ===== STATUS BADGE ===== */
     .status-open {
       display: inline-flex; align-items: center; gap: 5px;
       background: #E8F9EE; color: #048A3A;
@@ -363,26 +359,22 @@
     }
     .nav-cart-badge.show { display: flex; }
 
-    /* scroll hide */
     ::-webkit-scrollbar { display: none; }
   </style>
 </head>
 <body>
 
-<!-- Loading -->
 <div class="loading-screen" id="loading-screen">
   <div class="loading-logo">🍜</div>
   <div class="loading-spinner"></div>
 </div>
 
-<!-- ===== HERO ===== -->
 <div class="hero">
   <div class="hero-bg"></div>
   <div class="hero-decor">
     <div class="hero-circle-sm"></div>
   </div>
 
-  <!-- ไอคอนชามและไอน้ำ -->
   <div class="steam-wrap">
     <div class="steam"></div>
     <div class="steam"></div>
@@ -390,7 +382,6 @@
   </div>
   <div class="hero-bowl">🍜</div>
 
-  <!-- ข้อความ -->
   <div class="hero-content">
     <div class="hero-greeting">ยินดีต้อนรับ, <span id="user-name">คุณลูกค้า</span> 👋</div>
     <div class="hero-divider"></div>
@@ -399,7 +390,6 @@
   </div>
 </div>
 
-<!-- ===== PROFILE CARD ===== -->
 <div class="profile-float" id="profile-card">
   <div class="profile-avatar" id="profile-avatar">👤</div>
   <div class="profile-info">
@@ -409,10 +399,8 @@
   <div class="profile-badge">🎫 สมาชิก</div>
 </div>
 
-<!-- ===== PAGE CONTENT ===== -->
 <div class="page-wrap">
 
-  <!-- Promo -->
   <div class="promo-banner" style="margin-top:18px;">
     <div class="promo-text">
       <div class="promo-title">🎉 เมนูใหม่วันนี้!</div>
@@ -421,7 +409,6 @@
     <button class="promo-btn" onclick="window.location.href='menu.html'">ดูเมนู →</button>
   </div>
 
-  <!-- Quick Actions -->
   <div class="sec-title">เริ่มสั่งได้เลย</div>
   <div class="quick-grid">
     <a href="menu.html" class="quick-card">
@@ -438,7 +425,6 @@
     </a>
   </div>
 
-  <!-- Info Card -->
   <div class="sec-title">ข้อมูลร้าน</div>
   <div class="info-card">
     <div class="info-row">
@@ -453,32 +439,34 @@
         </div>
       </div>
     </div>
-    <div class="info-row">
+
+    <a href="https://www.google.com/maps?q=7.622758,99.999714" target="_blank" class="info-row">
       <div class="info-icon">📍</div>
       <div>
-        <div class="info-text-label">ที่อยู่</div>
-        <div class="info-text-value">สามแยกต้นโพธิ์ใหญ่ หมู่ที่9 ต.โคกชะงาย</div>
+        <div class="info-text-label">ที่อยู่ (แตะเพื่อเปิดแผนที่)</div>
+        <div class="info-text-value">สามแยกต้นโพธิ์ใหญ่ หมู่ที่ 9 ต.โคกชะงาย</div>
       </div>
-    </div>
-    <div class="info-row">
+    </a>
+
+    <div class="info-row" onclick="copyBankInfo()" style="cursor: pointer;">
       <div class="info-icon">💳</div>
       <div>
-        <div class="info-text-label">ชำระเงิน</div>
+        <div class="info-text-label">ชำระเงิน (แตะเพื่อคัดลอกเลขบัญชี)</div>
         <div class="info-text-value">LINE Pay &amp; เงินสด</div>
       </div>
     </div>
-    <div class="info-row">
+
+    <a href="tel:0653877411" class="info-row">
       <div class="info-icon">📞</div>
       <div>
-        <div class="info-text-label">ติดต่อ</div>
-        <div class="info-text-value">0653877411,0948783040</div>
+        <div class="info-text-label">ติดต่อ (แตะเพื่อโทรออก)</div>
+        <div class="info-text-value">065-3877411, 094-8783040</div>
       </div>
-    </div>
+    </a>
   </div>
 
 </div>
 
-<!-- ===== BOTTOM NAV ===== -->
 <nav class="bottom-nav">
   <a href="index.html" class="nav-item active" data-page="index.html">
     <span class="nav-icon">🏠</span><span>หน้าหลัก</span>
@@ -499,21 +487,37 @@
 <script src="js/api.js"></script>
 <script src="js/app.js"></script>
 <script>
+// ฟังก์ชันคัดลอกเลขบัญชี
+function copyBankInfo() {
+  const accountNo = "1234567890"; // <-- อ๊อดแก้เลขบัญชีตรงนี้ได้เลยครับ
+  const bankName = "ธนาคารกสิกรไทย";
+  
+  navigator.clipboard.writeText(accountNo).then(() => {
+    alert("คัดลอกเลขบัญชี " + bankName + " (" + accountNo + ") สำเร็จ!");
+  }).catch(err => {
+    // กรณีที่เบราว์เซอร์ไม่รองรับ clipboard API
+    const tempInput = document.createElement("input");
+    tempInput.value = accountNo;
+    document.body.appendChild(tempInput);
+    tempInput.select();
+    document.execCommand("copy");
+    document.body.removeChild(tempInput);
+    alert("คัดลอกเลขบัญชีแล้ว: " + accountNo);
+  });
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   try {
     await LiffManager.init();
     const profile = LiffManager.getProfile();
     const name    = LiffManager.getDisplayName();
 
-    // ชื่อใน hero
     const heroName = document.getElementById('user-name');
     if (heroName && name) heroName.textContent = name;
 
-    // profile card
     const profileName = document.getElementById('profile-name');
     if (profileName) profileName.textContent = name || 'Guest';
 
-    // รูปโปรไฟล์
     if (profile && profile.pictureUrl) {
       const avatar = document.getElementById('profile-avatar');
       if (avatar) avatar.innerHTML =
@@ -524,7 +528,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (pn) pn.textContent = 'Guest';
   }
 
-  // เช็กเวลาเปิด/ปิด (10:00-16:00)
   const now = new Date();
   const h   = now.getHours();
   const statusEl = document.querySelector('.status-open');
@@ -534,8 +537,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     statusEl.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:#C0392B;display:inline-block;"></span>ปิดอยู่ตอนนี้';
   }
 
-  showLoading(false);
-  updateCartBadges();
+  if(typeof showLoading === 'function') showLoading(false);
+  else document.getElementById('loading-screen').style.display = 'none';
+  
+  if(typeof updateCartBadges === 'function') updateCartBadges();
 });
 </script>
 </body>
