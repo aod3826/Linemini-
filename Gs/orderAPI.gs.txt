@@ -1,5 +1,5 @@
 /**
- * orderAPI.gs - Order Management (with Options support)
+ * orderAPI.gs - Order Management (with Options + Notifications)
  */
 
 function createOrder(body) {
@@ -21,7 +21,6 @@ function createOrder(body) {
     const qty = parseInt(item.qty);
     const basePrice = Number(menuItem.price);
 
-    // ✅ ตรวจสอบ options + คำนวณราคาเพิ่ม server-side
     const { extraPrice, optionsSummary } = validateAndPriceOptions(
       item.menuId,
       item.selectedOptions || []
@@ -37,7 +36,7 @@ function createOrder(body) {
       basePrice:       basePrice,
       extraPrice:      extraPrice,
       quantity:        qty,
-      optionsSummary:  optionsSummary, // เช่น "เส้นเล็ก, น้ำใส"
+      optionsSummary:  optionsSummary,
       selectedOptions: item.selectedOptions || [],
     });
   }
@@ -53,21 +52,30 @@ function createOrder(body) {
     now.toISOString(), note || '',
   ]);
 
-  // บันทึก OrderItems พร้อม options_summary
+  // บันทึก OrderItems
   const itemsSheet = getSheet('OrderItems');
   for (const item of validatedItems) {
     itemsSheet.appendRow([
-      orderId,
-      item.menuId,
-      item.menuName,
-      item.price,
-      item.quantity,
-      item.optionsSummary,  // ✅ คอลัมน์ใหม่
+      orderId, item.menuId, item.menuName,
+      item.price, item.quantity, item.optionsSummary,
     ]);
   }
 
   upsertCustomer(userId, customerName, now);
   logInfo('createOrder', `Order ${orderId} created for ${userId}`);
+
+  // ✅ แจ้งกลุ่มครัวทันทีถ้าเป็นเงินสด (LINE Pay จะแจ้งหลังชำระสำเร็จ)
+  const paymentMethod = body.paymentMethod || '';
+  if (paymentMethod !== 'linepay') {
+    notifyRestaurant(orderId, {
+      customerName: customerName || 'Guest',
+      totalPrice,
+      paymentMethod,
+      note: note || '',
+      items: validatedItems,
+    });
+  }
+
   return { success: true, orderId, totalPrice };
 }
 
@@ -97,7 +105,6 @@ function getOrder(orderId) {
   }
   if (!order) throw new Error('Order not found: ' + orderId);
 
-  // ดึง items พร้อม options_summary
   const itemsSheet = getSheet('OrderItems');
   const itemRows = itemsSheet.getDataRange().getValues();
   const itemHeaders = itemRows[0];
@@ -148,7 +155,6 @@ function getOrdersAdmin(adminKey, date) {
 
   orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-  // แนบ items พร้อม options_summary
   const itemsSheet = getSheet('OrderItems');
   const itemRows = itemsSheet.getDataRange().getValues();
   const itemHeaders = itemRows[0];
@@ -199,16 +205,27 @@ function updateOrderStatusAdmin(adminKey, orderId, status, body) {
   for (let i = 1; i < rows.length; i++) {
     if (String(rows[i][orderIdIdx]) === String(orderId)) {
       sheet.getRange(i + 1, statusIdx + 1).setValue(status);
+
+      // ✅ แจ้งลูกค้าเมื่ออาหารพร้อม
       if (status === 'done') {
         const order = rowToObj(headers, rows[i]);
         notifyCustomerDone(order.user_id, orderId);
       }
+
+      // ✅ แจ้งลูกค้าเมื่อเริ่มทำ
+      if (status === 'cooking') {
+        const order = rowToObj(headers, rows[i]);
+        notifyCustomerCooking(order.user_id, orderId);
+      }
+
+      // ✅ แจ้งลูกค้าเมื่อยกเลิก
       if (status === 'cancelled' && cancelReasonIdx >= 0) {
         const reason = body && body.reason ? body.reason : 'ยกเลิกโดยร้าน';
         sheet.getRange(i + 1, cancelReasonIdx + 1).setValue(reason);
         const order = rowToObj(headers, rows[i]);
         notifyCustomerCancelled(order.user_id, orderId, reason);
       }
+
       logInfo('updateOrderStatus', `Order ${orderId} -> ${status}`);
       return { success: true, orderId, status };
     }
@@ -221,9 +238,9 @@ function getSalesReport(adminKey) {
   const result = getOrdersAdmin(adminKey, getTodayString());
   return {
     success: true,
-    date: result.stats.date,
-    totalOrders: result.stats.totalOrders,
-    totalRevenue: result.stats.totalRevenue,
+    date:          result.stats.date,
+    totalOrders:   result.stats.totalOrders,
+    totalRevenue:  result.stats.totalRevenue,
     paidOrders:    result.orders.filter(o => o.paymentStatus === 'paid').length,
     pendingOrders: result.orders.filter(o => o.status === 'pending').length,
     cookingOrders: result.orders.filter(o => o.status === 'cooking').length,
