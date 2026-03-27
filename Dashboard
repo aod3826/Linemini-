@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#06C755">
+  <title>Dashboard - Merchant</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    body { background: var(--color-gray-50); max-width: 100%; }
+    .dashboard-header {
+      background: linear-gradient(135deg, #06C755, #048A3A);
+      color: white; padding: 24px 16px; text-align: center;
+      border-bottom: 1px solid rgba(0,0,0,0.1);
+    }
+    .dashboard-title { font-size: 28px; font-weight: 800; margin: 0; }
+    .dashboard-subtitle { font-size: 14px; opacity: 0.8; margin-top: 4px; }
+
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px; padding: 16px;
+    }
+    .stat-card {
+      background: white; padding: 16px; border-radius: 12px;
+      text-align: center; box-shadow: var(--shadow-card);
+      border-top: 3px solid #06C755;
+    }
+    .stat-label { font-size: 12px; color: var(--color-gray-500); margin-bottom: 6px; }
+    .stat-value { font-size: 28px; font-weight: 800; color: #06C755; }
+    .stat-unit { font-size: 11px; color: var(--color-gray-500); margin-top: 4px; }
+
+    .filter-bar {
+      display: flex; gap: 8px; padding: 12px 16px;
+      background: white; border-bottom: 1px solid var(--color-gray-100);
+      flex-wrap: wrap;
+    }
+    .filter-date { flex: 1; min-width: 140px; padding: 8px 10px;
+      border: 1.5px solid var(--color-gray-200);
+      border-radius: 8px; font-family: var(--font-main);
+      font-size: 14px; color: var(--color-gray-900); }
+    .btn-refresh { background: #06C755; color: white; border: none;
+      border-radius: 8px; padding: 8px 16px; font-family: var(--font-main);
+      font-size: 14px; font-weight: 700; cursor: pointer; }
+
+    .order-list { padding: 8px 16px; }
+    .order-item {
+      background: white; border-radius: 12px; padding: 14px;
+      margin-bottom: 8px; box-shadow: var(--shadow-card);
+      border-left: 4px solid #06C755; cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .order-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .order-item.pending { border-left-color: #F59E0B; }
+    .order-item.cooking { border-left-color: #FF6B35; }
+    .order-item.done { border-left-color: #10B981; }
+
+    .order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .order-id { font-weight: 800; font-size: 15px; }
+    .order-status { font-size: 12px; padding: 4px 8px; border-radius: 6px;
+      font-weight: 700; }
+    .status-pending { background: #FEF3C7; color: #92400E; }
+    .status-paid { background: #DBEAFE; color: #1E40AF; }
+    .status-cooking { background: #FFEDD5; color: #92400B; }
+    .status-done { background: #D1FAE5; color: #065F46; }
+
+    .order-info { font-size: 13px; color: var(--color-gray-600); margin-bottom: 8px; }
+    .order-actions { display: flex; gap: 6px; }
+    .btn-sm-action { flex: 1; padding: 8px; font-size: 12px; font-weight: 700;
+      border: none; border-radius: 6px; cursor: pointer; font-family: var(--font-main);
+      transition: opacity 0.2s; }
+    .btn-action-next { background: #06C755; color: white; }
+    .btn-action-next:active { opacity: 0.8; }
+    .btn-action-cancel { background: #FEE2E2; color: #C0392B; }
+
+    .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 480px; background: white;
+      border-top: 1px solid var(--color-gray-100); padding: 12px 16px;
+      padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+      box-shadow: 0 -4px 12px rgba(0,0,0,0.08); display: flex; gap: 8px;
+      justify-content: center; z-index: 50;
+    }
+    .nav-btn { flex: 1; max-width: 120px; padding: 10px;
+      border: 1.5px solid var(--color-gray-200); border-radius: 8px;
+      background: white; color: var(--color-gray-700); font-weight: 700;
+      font-size: 14px; cursor: pointer; font-family: var(--font-main); }
+    .nav-btn.active { background: #06C755; color: white; border-color: #06C755; }
+
+    .empty-state { padding: 60px 20px; text-align: center; color: var(--color-gray-500); }
+    .empty-icon { font-size: 48px; margin-bottom: 12px; }
+
+    main { padding-bottom: 100px; }
+
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      display: none; align-items: flex-end; justify-content: center;
+      z-index: 200; }
+    .modal-overlay.show { display: flex; }
+    .modal-sheet { background: white; border-radius: 24px 24px 0 0;
+      width: 100%; max-width: 480px; max-height: 80vh; overflow-y: auto;
+      animation: slideUp 0.3s ease-out; padding: 20px; padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+    .order-detail { }
+    .order-detail-row { display: flex; justify-content: space-between;
+      padding: 10px 0; border-bottom: 1px solid var(--color-gray-100); }
+    .order-detail-label { color: var(--color-gray-600); font-size: 13px; }
+    .order-detail-value { font-weight: 600; font-size: 14px; }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="dashboard-header">
+  <h1 class="dashboard-title">📊 Dashboard</h1>
+  <div class="dashboard-subtitle" id="merchant-name">Loading...</div>
+</div>
+
+<!-- Stats -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-label">ออเดอร์วันนี้</div>
+    <div class="stat-value" id="stat-orders">–</div>
+    <div class="stat-unit">รายการ</div>
+  </div>
+  <div class="stat-card" style="border-top-color: #06C755;">
+    <div class="stat-label">ยอดขาย</div>
+    <div class="stat-value" id="stat-revenue">–</div>
+    <div class="stat-unit">บาท</div>
+  </div>
+  <div class="stat-card" style="border-top-color: #FF6B35;">
+    <div class="stat-label">กำลังทำ</div>
+    <div class="stat-value" id="stat-cooking">–</div>
+    <div class="stat-unit">รายการ</div>
+  </div>
+  <div class="stat-card" style="border-top-color: #10B981;">
+    <div class="stat-label">เสร็จแล้ว</div>
+    <div class="stat-value" id="stat-done">–</div>
+    <div class="stat-unit">รายการ</div>
+  </div>
+</div>
+
+<!-- Filter -->
+<div class="filter-bar">
+  <input type="date" class="filter-date" id="filter-date">
+  <button class="btn-refresh" onclick="DashboardPage.loadOrders()">🔄 โหลด</button>
+</div>
+
+<!-- Orders List -->
+<main>
+  <div class="order-list" id="orders-list">
+    <div class="empty-state">
+      <div class="empty-icon">📋</div>
+      <div>โหลดข้อมูล...</div>
+    </div>
+  </div>
+</main>
+
+<!-- Order Detail Modal -->
+<div class="modal-overlay" id="detail-modal">
+  <div class="modal-sheet" id="detail-sheet">
+    <!-- populated by script -->
+  </div>
+</div>
+
+<!-- Bottom Nav -->
+<div class="bottom-nav">
+  <button class="nav-btn active" onclick="DashboardPage.switchTab('dashboard')">📊 Dashboard</button>
+  <button class="nav-btn" onclick="DashboardPage.switchTab('kitchen')">👨‍🍳 Kitchen</button>
+  <button class="nav-btn" onclick="DashboardPage.switchTab('settings')">⚙️ Settings</button>
+</div>
+
+<script src="js/cart.js"></script>
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script>
+const DashboardPage = (() => {
+  let allOrders = [];
+  const ADMIN_KEY = 'aod12345'; // ต้องตรงกับ CONFIG.ADMIN_KEY ใน backend
+
+  async function loadOrders() {
+    const date = document.getElementById('filter-date').value || getTodayDate();
+    
+    try {
+      const result = await API.getOrders(ADMIN_KEY, date);
+      const { orders, stats } = result;
+
+      allOrders = orders || [];
+      
+      // Update stats
+      document.getElementById('stat-orders').textContent = stats.totalOrders;
+      document.getElementById('stat-revenue').textContent = Math.round(stats.totalRevenue).toLocaleString('th-TH');
+      document.getElementById('stat-cooking').textContent = orders.filter(o => o.status === 'cooking').length;
+      document.getElementById('stat-done').textContent = orders.filter(o => o.status === 'done').length;
+
+      renderOrders();
+    } catch (err) {
+      console.error('Load error:', err);
+      document.getElementById('orders-list').innerHTML = 
+        `<div class="empty-state"><div class="empty-icon">😓</div><div>โหลดไม่สำเร็จ</div></div>`;
+    }
+  }
+
+  function renderOrders() {
+    const container = document.getElementById('orders-list');
+    
+    if (allOrders.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">✨</div>
+          <div>ไม่มีออเดอร์</div>
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = allOrders.map(order => {
+      const statusMap = {
+        'pending': { label: 'รอชำระ', badge: 'status-pending' },
+        'paid': { label: 'ชำระแล้ว', badge: 'status-paid' },
+        'cooking': { label: 'กำลังทำ', badge: 'status-cooking' },
+        'done': { label: 'เสร็จแล้ว', badge: 'status-done' },
+        'cancelled': { label: 'ยกเลิก', badge: 'status-pending' }
+      };
+      const s = statusMap[order.status] || statusMap.pending;
+      
+      return `
+        <div class="order-item ${order.status}" onclick="DashboardPage.showDetail('${order.orderId}')">
+          <div class="order-header">
+            <span class="order-id">#${order.orderId}</span>
+            <span class="order-status ${s.badge}">${s.label}</span>
+          </div>
+          <div class="order-info">
+            ${order.customerName} • ฿${Number(order.totalPrice).toLocaleString()} 
+            • ${new Date(order.createdAt).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}
+          </div>
+          <div class="order-actions">
+            ${order.status === 'paid' ? `
+              <button class="btn-sm-action btn-action-next" 
+                onclick="event.stopPropagation(); DashboardPage.updateStatus('${order.orderId}', 'cooking')">
+                🔥 ทำ
+              </button>` : ''}
+            ${order.status === 'cooking' ? `
+              <button class="btn-sm-action btn-action-next" 
+                onclick="event.stopPropagation(); DashboardPage.updateStatus('${order.orderId}', 'done')">
+                ✅ เสร็จ
+              </button>` : ''}
+            ${order.status !== 'done' && order.status !== 'cancelled' ? `
+              <button class="btn-sm-action btn-action-cancel" 
+                onclick="event.stopPropagation(); DashboardPage.updateStatus('${order.orderId}', 'cancelled')">
+                ❌
+              </button>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  async function updateStatus(orderId, status) {
+    try {
+      await API.updateOrderStatus(ADMIN_KEY, orderId, status);
+      Toast.success('อัปเดตแล้ว');
+      await loadOrders();
+    } catch (err) {
+      Toast.error('เกิดข้อผิดพลาด');
+    }
+  }
+
+  function showDetail(orderId) {
+    const order = allOrders.find(o => o.orderId === orderId);
+    if (!order) return;
+
+    const items = (order.items || []).map(i => `
+      <div class="order-detail-row">
+        <span class="order-detail-label">${i.menuName}${i.optionsSummary ? ` (${i.optionsSummary})` : ''}</span>
+        <span class="order-detail-value">x${i.quantity}</span>
+      </div>
+    `).join('');
+
+    const sheet = document.getElementById('detail-sheet');
+    sheet.innerHTML = `
+      <div style="margin-bottom: 16px;">
+        <h2 style="font-size: 20px; font-weight: 800; margin: 0 0 4px;">ออเดอร์ #${order.orderId}</h2>
+        <div style="font-size: 13px; color: var(--color-gray-500);">${order.customerName}</div>
+      </div>
+
+      <div class="order-detail">
+        <div class="order-detail-row">
+          <span class="order-detail-label">สถานะ</span>
+          <span class="order-detail-value">${{
+            'pending': 'รอชำระ', 'paid': 'ชำระแล้ว', 'cooking': 'กำลังทำ',
+            'done': 'เสร็จแล้ว', 'cancelled': 'ยกเลิก'
+          }[order.status]}</span>
+        </div>
+        <div class="order-detail-row">
+          <span class="order-detail-label">รายการ</span>
+          <span class="order-detail-value">${order.items?.length || 0} รายการ</span>
+        </div>
+        <div class="order-detail-row">
+          <span class="order-detail-label">ยอดรวม</span>
+          <span class="order-detail-value">฿${Number(order.totalPrice).toLocaleString()}</span>
+        </div>
+        <div class="order-detail-row">
+          <span class="order-detail-label">ชำระเงิน</span>
+          <span class="order-detail-value">${order.paymentStatus === 'paid' ? '✅ แล้ว' : '⏳ รอ'}</span>
+        </div>
+      </div>
+
+      <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--color-gray-100);">
+        <div style="font-weight: 700; margin-bottom: 10px;">รายการอาหาร</div>
+        ${items}
+      </div>
+
+      ${order.note ? `
+        <div style="margin-top: 16px; padding: 12px; background: var(--color-gray-50);
+          border-radius: 8px; font-size: 13px;">
+          <strong>📝 หมายเหตุ:</strong><br>
+          ${order.note}
+        </div>
+      ` : ''}
+
+      <button onclick="document.getElementById('detail-modal').classList.remove('show')" 
+        style="width: 100%; margin-top: 16px; padding: 12px;
+        background: var(--color-gray-200); border: none; border-radius: 8px;
+        font-weight: 700; cursor: pointer;">ปิด</button>
+    `;
+
+    document.getElementById('detail-modal').classList.add('show');
+  }
+
+  function switchTab(tab) {
+    if (tab === 'kitchen') {
+      window.location.href = 'kitchen.html';
+    } else if (tab === 'settings') {
+      window.location.href = 'settings.html';
+    }
+  }
+
+  function getTodayDate() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+
+  // Init
+  document.addEventListener('DOMContentLoaded', async () => {
+    // Auto-load merchant name from LIFF (if available)
+    try {
+      await LiffManager.init();
+      const name = LiffManager.getDisplayName();
+      document.getElementById('merchant-name').textContent = `ยินดีต้อนรับ ${name}`;
+    } catch (e) {
+      document.getElementById('merchant-name').textContent = 'Merchant Dashboard';
+    }
+
+    // Set today's date
+    document.getElementById('filter-date').value = getTodayDate();
+    
+    // Load orders
+    loadOrders();
+    
+    // Auto-refresh every 30 seconds
+    setInterval(loadOrders, 30000);
+  });
+
+  return { loadOrders, updateStatus, showDetail, switchTab };
+})();
+</script>
+</body>
+</html>
